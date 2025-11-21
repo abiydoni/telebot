@@ -2,11 +2,12 @@
 
 Aplikasi ini adalah **server bot Telegram berbasis Node.js** dengan dashboard web untuk:
 
-- Menjalankan 1 bot Telegram (token di `bot.js`).
+- Menjalankan 1 bot Telegram (token runtime di `bot.js`).
 - Menyimpan banyak token bot di database SQLite (`bots.sqlite`).
 - Menampilkan daftar semua bot (nama, username, token, status).
 - Menampilkan daftar **group** dan **private chat** yang pernah mengirim pesan ke bot runtime.
 - Mengirim pesan uji ke Chat ID via halaman dashboard.
+- Mengelola akses dengan **login** dan **CRUD user** (hanya user terautentikasi yang bisa membuka halaman utama & dashboard).
 
 > Catatan: Hanya **bot yang token‑nya di `bot.js`** yang benar‑benar berjalan (polling ke Telegram). Bot lain di database hanya sebagai data manajemen.
 
@@ -97,17 +98,19 @@ Halaman utama menampilkan:
 
 Klik nama bot di tabel atau buka langsung:
 
-`+
+```
 http://localhost:3000/dashboard
-`
+```
 
 Menampilkan:
 
 - **Informasi Bot Runtime** (berdasarkan token di `bot.js`).
 - **Daftar Group**  
-  Menampilkan semua chat dengan `type = group/supergroup` atau ID negatif yang pernah mengirim pesan ke bot.
+  Menampilkan semua chat dengan `type = group/supergroup` atau ID negatif yang pernah mengirim pesan ke bot.  
+  Tabel akan **otomatis diperbarui** setiap beberapa detik menggunakan endpoint `GET /api/groups` (tanpa reload seluruh halaman).
 - **Daftar Private Chat**  
-  Menampilkan semua chat `type = private`.
+  Menampilkan semua chat `type = private`.  
+  Tabel akan **otomatis diperbarui** setiap beberapa detik menggunakan endpoint `GET /api/private`.
 - **Form Test Kirim Pesan**
   - Input: `Chat ID` + `Pesan`.
   - Setelah submit:
@@ -122,6 +125,47 @@ Menampilkan:
 > - Bot (token di `bot.js`) sudah ditambahkan ke group.
 > - Privacy mode di @BotFather untuk bot tersebut **Disable** (via `/setprivacy`).
 > - Kirim minimal satu pesan (misalnya `/say_hello tes`) di group setelah bot menyala.
+
+---
+
+## Autentikasi & Manajemen User
+
+Aplikasi ini sudah dilengkapi lapisan autentikasi sederhana:
+
+- **Halaman Login (`/login`)**
+
+  - Form berisi `username` dan `password`.
+  - Contoh kredensial default (jika database baru dibuat):
+    - `username = admin`
+    - `password = admin123`
+  - Setelah login berhasil, server membuat session sederhana (disimpan di memory) dan men-set cookie `auth_token`.
+  - Hanya user yang sudah login yang dapat mengakses:
+    - Halaman utama `/`
+    - Halaman dashboard `/dashboard`
+    - Halaman manajemen user `/users`
+
+- **Penyimpanan Password (Hash)**
+
+  - Password **tidak disimpan dalam bentuk teks asli**.
+  - Server menggunakan algoritma **SHA‑256** untuk menghasilkan `passwordHash` sebelum menyimpan ke tabel `users`.
+  - Saat login, password dari form akan di-hash lalu dibandingkan dengan kolom `passwordHash`.
+
+- **Halaman Manajemen User (`/users`)**
+
+  - Hanya bisa diakses setelah login.
+  - Fitur:
+    - Tambah user baru (input `username` dan `password` biasa, di-hash otomatis).
+    - Tabel daftar user (password hanya ditampilkan sebagai hash yang sudah dipersingkat).
+    - Edit user:
+      - **Hanya mengubah password baru** (username dikunci/read‑only).
+      - Password baru akan di-hash dan menyimpan `passwordHash` yang baru.
+    - Hapus user (kecuali user `admin` default, yang dikunci dari penghapusan).
+
+- **Logout**
+  - Tersedia tombol **Logout** di:
+    - Halaman utama (via dropdown “Menu”).
+    - Halaman manajemen user.
+  - Menghapus session dari memory dan mengosongkan cookie `auth_token`, lalu mengarahkan kembali ke halaman `/login`.
 
 ---
 
