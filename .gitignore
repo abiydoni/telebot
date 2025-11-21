@@ -1,0 +1,58 @@
+#########################
+# Node / NPM Artifacts  #
+#########################
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
+package-lock.json
+*.sqlite
+
+#########################
+# Build Outputs         #
+#########################
+dist/
+build/
+lib/
+lib-cov/
+coverage/
+
+#########################
+# Environment / Secrets #
+#########################
+.env
+.env.local
+.env.*.local
+
+#########################
+# Logs & Temp Files     #
+#########################
+logs/
+*.log
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+*.swo
+
+#########################
+# IDE / Editor Files    #
+#########################
+.vscode/
+.idea/
+*.iml
+.history/
+.nyc_output/
+
+#########################
+# OS / Misc             #
+#########################
+*.pid
+*.seed
+.DS_Store
+desktop.ini
