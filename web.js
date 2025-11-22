@@ -288,7 +288,7 @@ app.get("/users", requireAuth, function (req, res) {
       "return [u,p];}});" +
       "if(!formValues)return;const [u,p]=formValues;try{const res=await fetch('" +
       baseUrl +
-      "/users/'+id+'/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});if(!res.ok){const data=await res.json().catch(()=>({error:'Gagal mengupdate user'}));throw new Error(data.error||'Gagal mengupdate user');}Swal.fire({icon:'success',title:'Berhasil',text:'Password user berhasil diupdate.'}).then(()=>window.location.reload());}catch(e){Swal.fire({icon:'error',title:'Gagal',text:e.message});}}" +
+      "/users/'+id+'/update',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({username:u,password:p})});if(!res.ok){const data=await res.json().catch(()=>({error:'Gagal mengupdate user'}));throw new Error(data.error||'Gagal mengupdate user');}Swal.fire({icon:'success',title:'Berhasil',text:'Password user berhasil diupdate.'}).then(()=>window.location.reload());}catch(e){Swal.fire({icon:'error',title:'Gagal',text:e.message});}}" +
       "</script>" +
       "</body>" +
       "</html>";
@@ -490,7 +490,7 @@ app.get("/", requireAuth, function (req, res) {
       "});" +
       "async function editBot(id){try{const res=await fetch('" +
       baseUrl +
-      "/api/bots/'+id);if(!res.ok){throw new Error('Gagal mengambil data bot');}const bot=await res.json();" +
+      "/api/bots/'+id,{credentials:'include'});if(!res.ok){throw new Error('Gagal mengambil data bot');}const bot=await res.json();" +
       "const {value:newToken}=await Swal.fire({title:'Update Token Bot',html:" +
       '\'<input id="swal-input-token" class="swal2-input" placeholder="Token baru" value="\'+(bot.token||\'\')+\'">\',' +
       "focusConfirm:false,showCancelButton:true,confirmButtonText:'Simpan',cancelButtonText:'Batal',preConfirm:()=>{" +
@@ -498,7 +498,7 @@ app.get("/", requireAuth, function (req, res) {
       "});" +
       "if(!newToken)return;const updateRes=await fetch('" +
       baseUrl +
-      "/api/bots/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:newToken})});if(!updateRes.ok){const errData=await updateRes.json().catch(()=>({error:'Gagal mengupdate bot'}));throw new Error(errData.error||'Gagal mengupdate bot');}Swal.fire({icon:'success',title:'Berhasil',text:'Token dan info bot telah diperbarui dari Telegram.'}).then(function(){location.reload();});}catch(e){Swal.fire({icon:'error',title:'Gagal',text:e.message});}}" +
+      "/api/bots/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({token:newToken})});if(!updateRes.ok){const errData=await updateRes.json().catch(()=>({error:'Gagal mengupdate bot'}));throw new Error(errData.error||'Gagal mengupdate bot');}Swal.fire({icon:'success',title:'Berhasil',text:'Token dan info bot telah diperbarui dari Telegram.'}).then(function(){location.reload();});}catch(e){Swal.fire({icon:'error',title:'Gagal',text:e.message});}}" +
       "</script>" +
       "</body>" +
       "</html>";
