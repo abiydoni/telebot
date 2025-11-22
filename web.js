@@ -71,6 +71,25 @@ function requireAuthApi(req, res, next) {
   next();
 }
 
+// Helper: dapatkan base URL dengan protokol yang benar (mendukung proxy/load balancer)
+function getBaseUrl(req) {
+  var protocol = req.protocol;
+  // Cek jika request datang melalui HTTPS via proxy/load balancer
+  if (req.headers["x-forwarded-proto"]) {
+    protocol = req.headers["x-forwarded-proto"].split(",")[0].trim();
+  } else if (req.secure) {
+    protocol = "https";
+  }
+  // Pastikan selalu HTTPS jika header menunjukkan HTTPS
+  if (
+    req.headers["x-forwarded-ssl"] === "on" ||
+    req.headers["x-forwarded-proto"] === "https"
+  ) {
+    protocol = "https";
+  }
+  return protocol + "://" + req.headers.host;
+}
+
 // Helper: ambil info bot (nama & username) dari token Telegram
 function fetchBotInfoFromToken(token) {
   return new Promise(function (resolve, reject) {
@@ -95,7 +114,7 @@ function fetchBotInfoFromToken(token) {
 
 // Halaman login
 app.get("/login", function (req, res) {
-  var baseUrl = req.protocol + "://" + req.headers.host;
+  var baseUrl = getBaseUrl(req);
   var error = req.query.error || null;
 
   var html =
@@ -184,7 +203,7 @@ app.post("/logout", function (req, res) {
 
 // Halaman manajemen users (CRUD)
 app.get("/users", requireAuth, function (req, res) {
-  var baseUrl = req.protocol + "://" + req.headers.host;
+  var baseUrl = getBaseUrl(req);
   var userError = req.query.userError || null;
   var userSuccess = req.query.userSuccess || null;
 
@@ -321,7 +340,7 @@ app.get("/users", requireAuth, function (req, res) {
 
 // Halaman awal: ringkasan bot & navigasi ke dashboard (ambil data dari runtime + DB)
 app.get("/", requireAuth, function (req, res) {
-  var baseUrl = req.protocol + "://" + req.headers.host;
+  var baseUrl = getBaseUrl(req);
 
   var errorMessage = req.query.error || null;
 
@@ -533,7 +552,7 @@ app.get("/", requireAuth, function (req, res) {
 app.get("/dashboard", requireAuth, function (req, res) {
   var groups = botModule.getGroups();
   var botInfo = botModule.getBotInfo();
-  var baseUrl = req.protocol + "://" + req.headers.host;
+  var baseUrl = getBaseUrl(req);
 
   var selectedBotName = req.query.name || null;
   var selectedBotUsername = req.query.username || null;
