@@ -551,9 +551,9 @@ app.get("/", requireAuth, function (req, res) {
 // Dashboard sederhana: info + list group ID + form test kirim pesan
 app.get("/dashboard", requireAuth, function (req, res) {
   var groups = botModule.getGroups();
-  var botInfo = botModule.getBotInfo();
   var baseUrl = getBaseUrl(req);
 
+  var selectedBotId = req.query.botId || null;
   var selectedBotName = req.query.name || null;
   var selectedBotUsername = req.query.username || null;
   var sendStatus = req.query.sendStatus || null;
@@ -563,6 +563,111 @@ app.get("/dashboard", requireAuth, function (req, res) {
     groups ? groups.length : 0
   );
 
+  // Jika ada botId, ambil info bot dari database dan Telegram
+  if (selectedBotId) {
+    db.getBot(selectedBotId, function (err, bot) {
+      if (err || !bot) {
+        console.error("Gagal mengambil bot dari database:", err);
+        // Fallback ke runtime bot info
+        var botInfo = botModule.getBotInfo();
+        renderDashboard(
+          req,
+          res,
+          botInfo,
+          groups,
+          baseUrl,
+          selectedBotName,
+          selectedBotUsername,
+          sendStatus
+        );
+        return;
+      }
+
+      // Ambil info bot dari Telegram menggunakan token
+      fetchBotInfoFromToken(bot.token)
+        .then(function (telegramInfo) {
+          // Ambil bot ID dari token (bagian sebelum tanda :)
+          var botIdFromToken = null;
+          if (bot.token && bot.token.indexOf(":") !== -1) {
+            botIdFromToken = bot.token.split(":")[0];
+          }
+          var botInfo = {
+            id: botIdFromToken || bot.id,
+            tokenMasked: bot.token
+              ? bot.token.slice(0, 6) +
+                "..." +
+                bot.token.slice(bot.token.length - 4, bot.token.length)
+              : "-",
+            firstName: telegramInfo.name || bot.name || "-",
+            username: telegramInfo.username || bot.username || null,
+          };
+          renderDashboard(
+            req,
+            res,
+            botInfo,
+            groups,
+            baseUrl,
+            selectedBotName,
+            selectedBotUsername,
+            sendStatus
+          );
+        })
+        .catch(function (err) {
+          console.error("Gagal mengambil info bot dari Telegram:", err);
+          // Fallback ke data dari database
+          // Ambil bot ID dari token (bagian sebelum tanda :)
+          var botIdFromToken = null;
+          if (bot.token && bot.token.indexOf(":") !== -1) {
+            botIdFromToken = bot.token.split(":")[0];
+          }
+          var botInfo = {
+            id: botIdFromToken || bot.id,
+            tokenMasked: bot.token
+              ? bot.token.slice(0, 6) +
+                "..." +
+                bot.token.slice(bot.token.length - 4, bot.token.length)
+              : "-",
+            firstName: bot.name || "-",
+            username: bot.username || null,
+          };
+          renderDashboard(
+            req,
+            res,
+            botInfo,
+            groups,
+            baseUrl,
+            selectedBotName,
+            selectedBotUsername,
+            sendStatus
+          );
+        });
+    });
+  } else {
+    // Gunakan info dari runtime bot
+    var botInfo = botModule.getBotInfo();
+    renderDashboard(
+      req,
+      res,
+      botInfo,
+      groups,
+      baseUrl,
+      selectedBotName,
+      selectedBotUsername,
+      sendStatus
+    );
+  }
+});
+
+function renderDashboard(
+  req,
+  res,
+  botInfo,
+  groups,
+  baseUrl,
+  selectedBotName,
+  selectedBotUsername,
+  sendStatus
+) {
   // Lebih toleran: anggap chat dengan ID negatif sebagai group/supergroup,
   // dan type !== 'private' juga dianggap group.
   var groupRows = groups
@@ -781,7 +886,7 @@ app.get("/dashboard", requireAuth, function (req, res) {
     "</html>";
 
   res.send(html);
-});
+}
 
 // ====== API untuk aplikasi lain ======
 
