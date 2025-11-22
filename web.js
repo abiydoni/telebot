@@ -53,6 +53,24 @@ function requireAuth(req, res, next) {
   next();
 }
 
+// Middleware untuk API endpoint yang mengembalikan JSON error jika tidak terautentikasi
+function requireAuthApi(req, res, next) {
+  var user = getUserFromRequest(req);
+  if (!user) {
+    console.log("Unauthorized API request:", {
+      path: req.path,
+      method: req.method,
+      cookies: req.headers.cookie || "no cookies",
+      userAgent: req.headers["user-agent"],
+    });
+    return res
+      .status(401)
+      .json({ error: "Unauthorized. Silakan login terlebih dahulu." });
+  }
+  req.user = user;
+  next();
+}
+
 // Helper: ambil info bot (nama & username) dari token Telegram
 function fetchBotInfoFromToken(token) {
   return new Promise(function (resolve, reject) {
@@ -134,12 +152,16 @@ app.post("/login", function (req, res) {
     }
 
     var sessionToken = createSession(user.username);
-    res.setHeader(
-      "Set-Cookie",
+    // Deteksi apakah menggunakan HTTPS
+    var isSecure = req.secure || req.headers["x-forwarded-proto"] === "https";
+    var cookieOptions =
       "auth_token=" +
-        sessionToken +
-        "; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400"
-    );
+      sessionToken +
+      "; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400";
+    if (isSecure) {
+      cookieOptions += "; Secure";
+    }
+    res.setHeader("Set-Cookie", cookieOptions);
     res.redirect("/");
   });
 });
@@ -288,7 +310,7 @@ app.get("/users", requireAuth, function (req, res) {
       "return [u,p];}});" +
       "if(!formValues)return;const [u,p]=formValues;try{const res=await fetch('" +
       baseUrl +
-      "/users/'+id+'/update',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({username:u,password:p})});if(!res.ok){const data=await res.json().catch(()=>({error:'Gagal mengupdate user'}));throw new Error(data.error||'Gagal mengupdate user');}Swal.fire({icon:'success',title:'Berhasil',text:'Password user berhasil diupdate.'}).then(()=>window.location.reload());}catch(e){Swal.fire({icon:'error',title:'Gagal',text:e.message});}}" +
+      "/users/'+id+'/update',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({username:u,password:p})});if(!res.ok){let errorMsg='Gagal mengupdate user';try{const data=await res.json();errorMsg=data.error||errorMsg;}catch(parseErr){if(res.status===401){errorMsg='Session expired. Silakan login ulang.';}else if(res.status===404){errorMsg='User tidak ditemukan.';}else if(res.status>=500){errorMsg='Server error. Silakan coba lagi.';}}throw new Error(errorMsg);}const result=await res.json();Swal.fire({icon:'success',title:'Berhasil',text:'Password user berhasil diupdate.'}).then(()=>window.location.reload());}catch(e){Swal.fire({icon:'error',title:'Gagal',text:e.message||'Terjadi kesalahan. Pastikan Anda masih login dan coba lagi.'});}}" +
       "</script>" +
       "</body>" +
       "</html>";
@@ -974,10 +996,16 @@ app.post("/users/create", requireAuth, function (req, res) {
   );
 });
 
-app.post("/users/:id/update", requireAuth, function (req, res) {
+app.post("/users/:id/update", requireAuthApi, function (req, res) {
   var id = req.params.id;
   var username = (req.body.username || "").trim();
   var password = (req.body.password || "").trim();
+
+  console.log("Update user request:", {
+    id: id,
+    username: username,
+    hasPassword: !!password,
+  });
 
   if (!username || !password) {
     return res
@@ -997,8 +1025,10 @@ app.post("/users/:id/update", requireAuth, function (req, res) {
         return res.status(500).json({ error: err.message || String(err) });
       }
       if (!row) {
+        console.error("User not found:", id);
         return res.status(404).json({ error: "User tidak ditemukan." });
       }
+      console.log("User updated successfully:", id);
       res.json({ ok: true });
     }
   );
