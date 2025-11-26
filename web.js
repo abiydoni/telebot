@@ -57,7 +57,7 @@ function requireAuth(req, res, next) {
 function requireAuthApi(req, res, next) {
   var user = getUserFromRequest(req);
   if (!user) {
-    console.log("Unauthorized API request:", {
+    console.error("Unauthorized API request:", {
       path: req.path,
       method: req.method,
       cookies: req.headers.cookie || "no cookies",
@@ -236,11 +236,11 @@ app.get("/users", requireAuth, function (req, res) {
                 (u.updatedAt || "-") +
                 "</td>" +
                 "<td class='px-3 py-2 text-right text-xs space-x-1'>" +
-                "<button type='button' class='inline-flex items-center justify-center rounded-lg bg-sky-600 px-2 py-1 text-[11px] font-medium text-slate-50 hover:bg-sky-500' title='Edit user' onclick='editUser(" +
+                "<button type='button' class='inline-flex items-center justify-center rounded-lg bg-sky-600 px-2 py-1 text-[11px] font-medium text-slate-50 hover:bg-sky-500' title='Edit user' onclick='window.openEditUserModal(" +
                 u.id +
-                ', "' +
-                (u.username || "").replace(/"/g, "&quot;") +
-                "\")'>&#9998;</button>" +
+                ", " +
+                JSON.stringify(u.username || "") +
+                ")'>&#9998;</button>" +
                 (u.username === "admin"
                   ? ""
                   : "<form method='POST' action='/users/" +
@@ -273,6 +273,7 @@ app.get("/users", requireAuth, function (req, res) {
       "</div>" +
       "<div class='flex gap-2'>" +
       "<a href='/' class='inline-flex items-center rounded-xl border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:border-slate-500 transition'>← Kembali ke Dashboard</a>" +
+      "<a href='/bot-menu' class='inline-flex items-center rounded-xl border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:border-slate-500 transition'>📋 Bot Menu</a>" +
       "<form method='POST' action='/logout'>" +
       "<button type='submit' class='inline-flex items-center rounded-xl bg-slate-800 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700'>Logout</button>" +
       "</form>" +
@@ -305,31 +306,76 @@ app.get("/users", requireAuth, function (req, res) {
       "</div>" +
       "</section>" +
       "</div>" +
+      // Modal Edit User
+      '<div id="editUserModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">' +
+      '<div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl max-w-md w-full p-6">' +
+      '<h3 class="text-lg font-semibold mb-4 text-slate-200">Edit User</h3>' +
+      '<form id="editUserForm" class="space-y-3 text-xs">' +
+      '<input type="hidden" id="editUserId" name="id" />' +
+      '<div><label class="block text-slate-300 mb-1">Username</label><input type="text" id="editUserUsername" name="username" readonly class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 bg-slate-800/50" placeholder="Username" /></div>' +
+      '<div><label class="block text-slate-300 mb-1">Password Baru</label><input type="password" id="editUserPassword" name="password" required class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500" placeholder="Password baru" /></div>' +
+      '<div class="flex gap-2 justify-end pt-2">' +
+      '<button type="button" onclick="window.closeEditUserModal()" class="px-4 py-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-200 text-xs font-medium hover:bg-slate-700">Batal</button>' +
+      '<button type="submit" class="px-4 py-2 rounded-lg bg-sky-500 text-slate-950 text-xs font-semibold hover:bg-sky-400">Simpan</button>' +
+      "</div>" +
+      "</form>" +
+      "</div>" +
+      "</div>" +
       '<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>' +
       "<script>" +
+      "window.openEditUserModal=function(id,currentUsername){" +
+      "const modal=document.getElementById('editUserModal');" +
+      "if(!modal){alert('Modal tidak ditemukan');return;}" +
+      "document.getElementById('editUserId').value=id;" +
+      "document.getElementById('editUserUsername').value=currentUsername||'';" +
+      "document.getElementById('editUserPassword').value='';" +
+      "modal.classList.remove('hidden');" +
+      "};" +
+      "window.closeEditUserModal=function(){" +
+      "const modal=document.getElementById('editUserModal');" +
+      "if(modal){modal.classList.add('hidden');}" +
+      "};" +
       "document.addEventListener('DOMContentLoaded',function(){" +
       "const params=new URLSearchParams(window.location.search);" +
       "const uErr=params.get('userError');const uOk=params.get('userSuccess');" +
       "if(uErr){Swal.fire({icon:'error',title:'Gagal',text:uErr});const cleanUrl=window.location.origin+window.location.pathname;window.history.replaceState({},'',cleanUrl);}" +
       "if(uOk){Swal.fire({icon:'success',title:'Berhasil',text:uOk});const cleanUrl2=window.location.origin+window.location.pathname;window.history.replaceState({},'',cleanUrl2);}" +
-      "document.querySelectorAll('.delete-bot-form').forEach(function(form){" +
-      "form.addEventListener('submit',function(e){" +
+      "document.addEventListener('submit',function(e){" +
+      "if(e.target&&e.target.classList&&e.target.classList.contains('delete-user-form')){" +
       "e.preventDefault();" +
-      "Swal.fire({title:'Hapus user?',text:'User akan dihapus permanen.',icon:'warning',showCancelButton:true,confirmButtonColor:'#ef4444',cancelButtonColor:'#64748b',confirmButtonText:'Ya, hapus',cancelButtonText:'Batal'}).then(function(result){if(result.isConfirmed){form.submit();}});" +
+      "e.stopPropagation();" +
+      "const formElement=e.target;" +
+      "Swal.fire({title:'Hapus user?',text:'User akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.',icon:'warning',showCancelButton:true,confirmButtonColor:'#ef4444',cancelButtonColor:'#64748b',confirmButtonText:'Ya, hapus',cancelButtonText:'Batal'}).then(function(result){if(result.isConfirmed){formElement.submit();}});" +
+      "return false;" +
+      "}" +
       "});" +
-      "});" +
-      "});" +
-      "async function editUser(id,currentUsername){const {value:formValues}=await Swal.fire({title:'Edit User',html:" +
-      '\'<input id="swal-user-username" class="swal2-input" placeholder="Username" value="\'+(currentUsername||\'\')+\'" readonly>\'+ ' +
-      '\'<input id="swal-user-password" class="swal2-input" type="password" placeholder="Password baru">\',' +
-      "focusConfirm:false,showCancelButton:true,confirmButtonText:'Simpan',cancelButtonText:'Batal',preConfirm:()=>{" +
-      "const u=document.getElementById('swal-user-username').value.trim();" +
-      "const p=document.getElementById('swal-user-password').value.trim();" +
-      "if(!p){Swal.showValidationMessage('Password baru wajib diisi');}" +
-      "return [u,p];}});" +
-      "if(!formValues)return;const [u,p]=formValues;try{const res=await fetch('" +
+      "const editUserForm=document.getElementById('editUserForm');" +
+      "if(editUserForm){" +
+      "editUserForm.addEventListener('submit',async function(e){" +
+      "e.preventDefault();" +
+      "e.stopPropagation();" +
+      "const id=document.getElementById('editUserId').value;" +
+      "const u=document.getElementById('editUserUsername').value.trim();" +
+      "const p=document.getElementById('editUserPassword').value.trim();" +
+      "if(!p){Swal.fire({icon:'warning',title:'Validasi',text:'Password baru wajib diisi'});return false;}" +
+      "try{" +
+      "const res=await fetch('" +
       baseUrl +
-      "/users/'+id+'/update',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({username:u,password:p})});if(!res.ok){let errorMsg='Gagal mengupdate user';try{const data=await res.json();errorMsg=data.error||errorMsg;}catch(parseErr){if(res.status===401){errorMsg='Session expired. Silakan login ulang.';}else if(res.status===404){errorMsg='User tidak ditemukan.';}else if(res.status>=500){errorMsg='Server error. Silakan coba lagi.';}}throw new Error(errorMsg);}const result=await res.json();Swal.fire({icon:'success',title:'Berhasil',text:'Password user berhasil diupdate.'}).then(()=>window.location.reload());}catch(e){Swal.fire({icon:'error',title:'Gagal',text:e.message||'Terjadi kesalahan. Pastikan Anda masih login dan coba lagi.'});}}" +
+      "/users/'+id+'/update',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({username:u,password:p})});" +
+      "if(!res.ok){let errorMsg='Gagal mengupdate user';try{const data=await res.json();errorMsg=data.error||errorMsg;}catch(parseErr){if(res.status===401){errorMsg='Session expired. Silakan login ulang.';}else if(res.status===404){errorMsg='User tidak ditemukan.';}else if(res.status>=500){errorMsg='Server error. Silakan coba lagi.';}}throw new Error(errorMsg);}" +
+      "const result=await res.json();" +
+      "Swal.fire({icon:'success',title:'Berhasil',text:'Password user berhasil diupdate.'}).then(()=>window.location.reload());" +
+      "}catch(e){Swal.fire({icon:'error',title:'Gagal',text:e.message||'Terjadi kesalahan. Pastikan Anda masih login dan coba lagi.'});}" +
+      "return false;" +
+      "});" +
+      "}" +
+      "const editUserModalEl=document.getElementById('editUserModal');" +
+      "if(editUserModalEl){" +
+      "editUserModalEl.addEventListener('click',function(e){" +
+      "if(e.target.id==='editUserModal'){window.closeEditUserModal();}" +
+      "});" +
+      "}" +
+      "});" +
       "</script>" +
       "</body>" +
       "</html>";
@@ -395,7 +441,7 @@ app.get("/", requireAuth, function (req, res) {
                 "</span>" +
                 "</td>" +
                 "<td class='px-3 py-2 text-right text-xs space-x-1'>" +
-                "<button type='button' class='inline-flex items-center justify-center rounded-lg bg-sky-600 px-2 py-1 text-[11px] font-medium text-slate-50 hover:bg-sky-500' title='Edit bot' onclick='editBot(" +
+                "<button type='button' class='inline-flex items-center justify-center rounded-lg bg-sky-600 px-2 py-1 text-[11px] font-medium text-slate-50 hover:bg-sky-500' title='Edit bot' onclick='openEditBotModal(" +
                 b.id +
                 ")'>&#9998;</button>" + // ✏ icon
                 "<form method='POST' action='/bots/" +
@@ -441,6 +487,7 @@ app.get("/", requireAuth, function (req, res) {
       "</button>" +
       "<div id='userMenu' class='hidden absolute right-0 mt-2 w-40 rounded-md border border-slate-700 bg-slate-900/95 shadow-lg shadow-black/40 z-20'>" +
       "<a href='/users' class='block px-3 py-2 text-xs text-slate-200 hover:bg-slate-800'>Manajemen User</a>" +
+      "<a href='/bot-menu' class='block px-3 py-2 text-xs text-slate-200 hover:bg-slate-800 border-t border-slate-800'>Bot Menu</a>" +
       "<form method='POST' action='/logout' class='border-t border-slate-800'>" +
       "<button type='submit' class='w-full text-left px-3 py-2 text-xs text-rose-300 hover:bg-rose-900/40'>Logout</button>" +
       "</form>" +
@@ -448,6 +495,45 @@ app.get("/", requireAuth, function (req, res) {
       "</div>" +
       "</div>" +
       "</header>" +
+      // Quick Actions Section
+      '<section class="grid gap-4 md:grid-cols-3 mb-6">' +
+      '<a href="/bot-menu" class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg shadow-black/40 hover:bg-slate-900/80 hover:border-sky-500/50 transition-all group">' +
+      '<div class="flex items-center gap-3">' +
+      '<div class="flex-shrink-0 w-12 h-12 rounded-xl bg-sky-500/10 flex items-center justify-center group-hover:bg-sky-500/20 transition">' +
+      '<span class="text-2xl">📋</span>' +
+      "</div>" +
+      '<div class="flex-1 min-w-0">' +
+      '<h3 class="text-sm font-semibold text-slate-200 group-hover:text-sky-300 transition">Bot Menu</h3>' +
+      '<p class="text-xs text-slate-400 mt-0.5">Kelola menu bot</p>' +
+      "</div>" +
+      '<div class="flex-shrink-0 text-slate-400 group-hover:text-sky-400 transition">→</div>' +
+      "</div>" +
+      "</a>" +
+      '<a href="/users" class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg shadow-black/40 hover:bg-slate-900/80 hover:border-sky-500/50 transition-all group">' +
+      '<div class="flex items-center gap-3">' +
+      '<div class="flex-shrink-0 w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition">' +
+      '<span class="text-2xl">👥</span>' +
+      "</div>" +
+      '<div class="flex-1 min-w-0">' +
+      '<h3 class="text-sm font-semibold text-slate-200 group-hover:text-emerald-300 transition">Manajemen User</h3>' +
+      '<p class="text-xs text-slate-400 mt-0.5">Kelola pengguna</p>' +
+      "</div>" +
+      '<div class="flex-shrink-0 text-slate-400 group-hover:text-emerald-400 transition">→</div>' +
+      "</div>" +
+      "</a>" +
+      '<a href="/dashboard" class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg shadow-black/40 hover:bg-slate-900/80 hover:border-sky-500/50 transition-all group">' +
+      '<div class="flex items-center gap-3">' +
+      '<div class="flex-shrink-0 w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center group-hover:bg-amber-500/20 transition">' +
+      '<span class="text-2xl">📊</span>' +
+      "</div>" +
+      '<div class="flex-1 min-w-0">' +
+      '<h3 class="text-sm font-semibold text-slate-200 group-hover:text-amber-300 transition">Dashboard</h3>' +
+      '<p class="text-xs text-slate-400 mt-0.5">Monitor bot & chat</p>' +
+      "</div>" +
+      '<div class="flex-shrink-0 text-slate-400 group-hover:text-amber-400 transition">→</div>' +
+      "</div>" +
+      "</a>" +
+      "</section>" +
       // Tabel semua bot dari SQLite
       '<section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 shadow-lg shadow-black/40">' +
       '<div class="flex items-center justify-between gap-2 mb-3">' +
@@ -514,7 +600,25 @@ app.get("/", requireAuth, function (req, res) {
       "</div>" +
       "</section>" +
       "</div>" +
+      // Modal Edit Bot
+      '<div id="editBotModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">' +
+      '<div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl max-w-md w-full p-6">' +
+      '<h3 class="text-lg font-semibold mb-4 text-slate-200">Edit Bot</h3>' +
+      '<form id="editBotForm" class="space-y-3 text-xs">' +
+      '<input type="hidden" id="editBotId" name="id" />' +
+      '<div><label class="block text-slate-300 mb-1">Token Bot Telegram</label><input type="text" id="editBotToken" name="token" required class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 font-mono" placeholder="123456789:ABCDEF-token-dari-BotFather" /></div>' +
+      '<div class="flex gap-2 justify-end pt-2">' +
+      '<button type="button" onclick="closeEditBotModal()" class="px-4 py-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-200 text-xs font-medium hover:bg-slate-700">Batal</button>' +
+      '<button type="submit" class="px-4 py-2 rounded-lg bg-sky-500 text-slate-950 text-xs font-semibold hover:bg-sky-400">Simpan</button>' +
+      "</div>" +
+      "</form>" +
+      "</div>" +
+      "</div>" +
       "<script>" +
+      "function openEditBotModal(id){(async function(){try{var url='" +
+      baseUrl +
+      "/api/bots/'+id;var res=await fetch(url,{credentials:'include'});if(!res.ok){throw new Error('Gagal mengambil data bot');}var bot=await res.json();var modal=document.getElementById('editBotModal');if(!modal){alert('Modal tidak ditemukan');return;}document.getElementById('editBotId').value=id;document.getElementById('editBotToken').value=bot.token||'';modal.classList.remove('hidden');}catch(e){Swal.fire({icon:'error',title:'Gagal',text:e.message});}})();}" +
+      "function closeEditBotModal(){var modal=document.getElementById('editBotModal');if(modal){modal.classList.add('hidden');}}" +
       "document.addEventListener('DOMContentLoaded',function(){" +
       "var btn=document.getElementById('userMenuButton');" +
       "var menu=document.getElementById('userMenu');" +
@@ -525,21 +629,37 @@ app.get("/", requireAuth, function (req, res) {
       "document.querySelectorAll('.delete-bot-form').forEach(function(form){" +
       "form.addEventListener('submit',function(e){" +
       "e.preventDefault();" +
-      "Swal.fire({title:'Hapus bot?',text:'Tindakan ini tidak dapat dibatalkan.',icon:'warning',showCancelButton:true,confirmButtonColor:'#ef4444',cancelButtonColor:'#64748b',confirmButtonText:'Ya, hapus',cancelButtonText:'Batal'}).then(function(result){if(result.isConfirmed){form.submit();}});" +
+      "e.stopPropagation();" +
+      "const formElement=this;" +
+      "Swal.fire({title:'Hapus bot?',text:'Tindakan ini tidak dapat dibatalkan.',icon:'warning',showCancelButton:true,confirmButtonColor:'#ef4444',cancelButtonColor:'#64748b',confirmButtonText:'Ya, hapus',cancelButtonText:'Batal'}).then(function(result){if(result.isConfirmed){formElement.submit();}});" +
+      "return false;" +
       "});" +
       "});" +
-      "});" +
-      "async function editBot(id){try{const res=await fetch('" +
+      "const editBotForm=document.getElementById('editBotForm');" +
+      "if(editBotForm){" +
+      "editBotForm.addEventListener('submit',async function(e){" +
+      "e.preventDefault();" +
+      "e.stopPropagation();" +
+      "const id=document.getElementById('editBotId').value;" +
+      "const token=document.getElementById('editBotToken').value.trim();" +
+      "if(!token){Swal.fire({icon:'warning',title:'Validasi',text:'Token tidak boleh kosong'});return false;}" +
+      "try{" +
+      "const updateRes=await fetch('" +
       baseUrl +
-      "/api/bots/'+id,{credentials:'include'});if(!res.ok){throw new Error('Gagal mengambil data bot');}const bot=await res.json();" +
-      "const {value:newToken}=await Swal.fire({title:'Update Token Bot',html:" +
-      '\'<input id="swal-input-token" class="swal2-input" placeholder="Token baru" value="\'+(bot.token||\'\')+\'">\',' +
-      "focusConfirm:false,showCancelButton:true,confirmButtonText:'Simpan',cancelButtonText:'Batal',preConfirm:()=>{" +
-      "const t=document.getElementById('swal-input-token').value.trim();if(!t){Swal.showValidationMessage('Token tidak boleh kosong');}return t;}" +
+      "/api/bots/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({token:token})});" +
+      "if(!updateRes.ok){const errData=await updateRes.json().catch(()=>({error:'Gagal mengupdate bot'}));throw new Error(errData.error||'Gagal mengupdate bot');}" +
+      "Swal.fire({icon:'success',title:'Berhasil',text:'Token dan info bot telah diperbarui dari Telegram.'}).then(function(){location.reload();});" +
+      "}catch(e){Swal.fire({icon:'error',title:'Gagal',text:e.message});}" +
+      "return false;" +
       "});" +
-      "if(!newToken)return;const updateRes=await fetch('" +
-      baseUrl +
-      "/api/bots/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({token:newToken})});if(!updateRes.ok){const errData=await updateRes.json().catch(()=>({error:'Gagal mengupdate bot'}));throw new Error(errData.error||'Gagal mengupdate bot');}Swal.fire({icon:'success',title:'Berhasil',text:'Token dan info bot telah diperbarui dari Telegram.'}).then(function(){location.reload();});}catch(e){Swal.fire({icon:'error',title:'Gagal',text:e.message});}}" +
+      "}" +
+      "const editBotModalEl=document.getElementById('editBotModal');" +
+      "if(editBotModalEl){" +
+      "editBotModalEl.addEventListener('click',function(e){" +
+      "if(e.target.id==='editBotModal'){closeEditBotModal();}" +
+      "});" +
+      "}" +
+      "});" +
       "</script>" +
       "</body>" +
       "</html>";
@@ -557,11 +677,6 @@ app.get("/dashboard", requireAuth, function (req, res) {
   var selectedBotName = req.query.name || null;
   var selectedBotUsername = req.query.username || null;
   var sendStatus = req.query.sendStatus || null;
-
-  console.log(
-    "Dashboard diakses, jumlah chat terdaftar:",
-    groups ? groups.length : 0
-  );
 
   // Jika ada botId, ambil info bot dari database dan Telegram
   if (selectedBotId) {
@@ -947,7 +1062,9 @@ app.post("/bots/create", function (req, res) {
   var token = req.body.token;
 
   if (!token) {
-    return res.redirect("/"); // token kosong, abaikan dan kembali
+    return res.redirect(
+      "/?error=" + encodeURIComponent("Token tidak boleh kosong.")
+    );
   }
 
   fetchBotInfoFromToken(token)
@@ -957,9 +1074,22 @@ app.post("/bots/create", function (req, res) {
         username: info.username,
         token: token,
       };
-      db.createBot(data, function (err) {
+      db.createBot(data, function (err, row) {
         if (err) {
           console.error("DB createBot (form) error:", err);
+          return res.redirect(
+            "/?error=" +
+              encodeURIComponent(
+                "Gagal menyimpan bot ke database: " +
+                  (err.message || String(err))
+              )
+          );
+        }
+        if (!row) {
+          console.error("DB createBot: No row returned");
+          return res.redirect(
+            "/?error=" + encodeURIComponent("Gagal menyimpan bot ke database.")
+          );
         }
         res.redirect("/");
       });
@@ -970,7 +1100,8 @@ app.post("/bots/create", function (req, res) {
       res.redirect(
         "/?error=" +
           encodeURIComponent(
-            "Token Telegram tidak valid atau bot tidak ditemukan."
+            "Token Telegram tidak valid atau bot tidak ditemukan: " +
+              (err.message || String(err))
           )
       );
     });
@@ -1125,12 +1256,6 @@ app.post("/users/:id/update", requireAuthApi, function (req, res) {
   var username = (req.body.username || "").trim();
   var password = (req.body.password || "").trim();
 
-  console.log("Update user request:", {
-    id: id,
-    username: username,
-    hasPassword: !!password,
-  });
-
   if (!username || !password) {
     return res
       .status(400)
@@ -1152,7 +1277,6 @@ app.post("/users/:id/update", requireAuthApi, function (req, res) {
         console.error("User not found:", id);
         return res.status(404).json({ error: "User tidak ditemukan." });
       }
-      console.log("User updated successfully:", id);
       res.json({ ok: true });
     }
   );
@@ -1207,6 +1331,399 @@ app.post("/dashboard/test", function (req, res) {
       console.error("Gagal kirim pesan dari dashboard:", err);
       res.redirect("/dashboard?sendStatus=error");
     });
+});
+
+// ====== API untuk Bot Menu ======
+
+// API endpoint untuk test (opsional, untuk debugging)
+app.get("/api/menus", requireAuthApi, function (req, res) {
+  db.allMenus(function (err, menus) {
+    if (err) {
+      console.error("DB allMenus API error:", err);
+      return res.status(500).json({ error: err.message || String(err) });
+    }
+    res.json(menus || []);
+  });
+});
+
+// ====== Halaman Bot Menu (CRUD) ======
+
+app.get("/bot-menu", requireAuth, function (req, res) {
+  var baseUrl = getBaseUrl(req);
+  var menuError = req.query.menuError || null;
+  var menuSuccess = req.query.menuSuccess || null;
+
+  db.allMenus(function (err, menus) {
+    if (err) {
+      console.error("DB allMenus error:", err);
+      menus = [];
+      menuError = menuError || "Gagal memuat daftar menu.";
+    }
+
+    // Pastikan menus adalah array
+    if (!Array.isArray(menus)) {
+      console.error("Menus is not an array:", typeof menus);
+      menus = [];
+    }
+
+    // Ambil menu utama untuk dropdown parent
+    var mainMenus = menus.filter(function (m) {
+      return (
+        m.parent_id === null || m.parent_id === undefined || m.parent_id === ""
+      );
+    });
+
+    var menuRows = "";
+    // Pastikan menus adalah array dan punya length > 0
+    var hasMenus = menus && Array.isArray(menus) && menus.length > 0;
+
+    if (hasMenus) {
+      menuRows = menus
+        .map(function (m) {
+          var parentDesc = "—";
+          if (
+            m.parent_id !== null &&
+            m.parent_id !== undefined &&
+            m.parent_id !== ""
+          ) {
+            // Tampilkan ID parent (angka) bukan deskripsi
+            parentDesc = String(m.parent_id);
+          }
+
+          // Escape untuk HTML dan JavaScript
+          var safeKeyword = (m.keyword || "")
+            .replace(/\\/g, "\\\\")
+            .replace(/"/g, '\\"')
+            .replace(/'/g, "\\'")
+            .replace(/\n/g, "\\n")
+            .replace(/\r/g, "\\r");
+          var safeDescription = (m.description || "")
+            .replace(/\\/g, "\\\\")
+            .replace(/"/g, '\\"')
+            .replace(/'/g, "\\'")
+            .replace(/\n/g, "\\n")
+            .replace(/\r/g, "\\r");
+          var safeUrl = (m.url || "")
+            .replace(/\\/g, "\\\\")
+            .replace(/"/g, '\\"')
+            .replace(/'/g, "\\'")
+            .replace(/\n/g, "\\n")
+            .replace(/\r/g, "\\r");
+
+          return (
+            "<tr>" +
+            "<td class='px-3 py-2 text-xs font-mono text-slate-300'>" +
+            (m.id || "") +
+            "</td>" +
+            "<td class='px-3 py-2 text-xs text-slate-400'>" +
+            parentDesc +
+            "</td>" +
+            "<td class='px-3 py-2 text-xs font-mono text-center'>" +
+            (m.keyword || "") +
+            "</td>" +
+            "<td class='px-3 py-2 text-sm'>" +
+            (m.description || "") +
+            "</td>" +
+            "<td class='px-3 py-2 text-xs text-slate-400 truncate max-w-xs'>" +
+            (m.url || "") +
+            "</td>" +
+            "<td class='px-3 py-2 text-right text-xs space-x-1'>" +
+            "<button type='button' class='inline-flex items-center justify-center rounded-lg bg-sky-600 px-2 py-1 text-[11px] font-medium text-slate-50 hover:bg-sky-500' title='Edit menu' onclick='openEditModal(" +
+            m.id +
+            ", " +
+            (m.parent_id !== null && m.parent_id !== undefined
+              ? m.parent_id
+              : "null") +
+            ", " +
+            JSON.stringify(m.keyword || "") +
+            ", " +
+            JSON.stringify(m.description || "") +
+            ", " +
+            JSON.stringify(m.url || "") +
+            ")'>&#9998;</button>" +
+            "<form method='POST' action='/bot-menu/" +
+            m.id +
+            "/delete' style='display:inline' class='delete-menu-form'>" +
+            "<button type='submit' class='inline-flex items-center justify-center rounded-lg bg-rose-600 px-2 py-1 text-[11px] font-medium text-slate-50 hover:bg-rose-500' title='Hapus menu'>&#128465;</button>" +
+            "</form>" +
+            "</td>" +
+            "</tr>"
+          );
+        })
+        .join("");
+      if (!menuRows || menuRows.length === 0) {
+        menuRows =
+          "<tr><td colspan='6' class='px-3 py-4 text-center text-rose-400 text-xs'>Error: Gagal render menu</td></tr>";
+      }
+    } else {
+      menuRows =
+        "<tr><td colspan='6' class='px-3 py-4 text-center text-slate-400 text-xs'>Belum ada menu.</td></tr>";
+    }
+
+    var mainMenuOptions = "";
+    if (mainMenus && Array.isArray(mainMenus) && mainMenus.length > 0) {
+      mainMenuOptions = mainMenus
+        .map(function (m) {
+          var safeDesc = (m.description || "").replace(/'/g, "&#39;");
+          var safeKeyword = (m.keyword || "").replace(/'/g, "&#39;");
+          return (
+            "<option value='" +
+            m.id +
+            "'>" +
+            safeDesc +
+            " (" +
+            safeKeyword +
+            ")</option>"
+          );
+        })
+        .join("");
+    }
+
+    var html =
+      "<!DOCTYPE html>" +
+      "<html>" +
+      "<head>" +
+      '<meta charset="utf-8" />' +
+      "<title>Manajemen Bot Menu - Telegram Bot Manager</title>" +
+      '<script src="https://cdn.tailwindcss.com"></script>' +
+      '<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>' +
+      "</head>" +
+      '<body class="bg-slate-950 text-slate-100 min-h-screen">' +
+      '<div class="max-w-6xl mx-auto px-4 py-8 space-y-6">' +
+      '<header class="mb-4 flex items-center justify-between">' +
+      "<div>" +
+      '<h1 class="text-2xl font-semibold tracking-tight">📋 Manajemen Bot Menu</h1>' +
+      '<p class="text-slate-400 text-sm mt-1">Kelola menu bot yang akan ditampilkan ketika user mengirim pesan "menu".</p>' +
+      "</div>" +
+      "<div class='flex gap-2'>" +
+      "<a href='/' class='inline-flex items-center rounded-xl border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:border-slate-500 transition'>← Kembali ke Dashboard</a>" +
+      "<a href='/bot-menu' class='inline-flex items-center rounded-xl border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:border-slate-500 transition'>📋 Bot Menu</a>" +
+      "<form method='POST' action='/logout'>" +
+      "<button type='submit' class='inline-flex items-center rounded-xl bg-slate-800 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700'>Logout</button>" +
+      "</form>" +
+      "</div>" +
+      "</header>" +
+      '<section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg shadow-black/40">' +
+      "<h2 class='text-sm font-semibold mb-3 text-slate-200'>Tambah Menu Baru</h2>" +
+      "<form method='POST' action='/bot-menu/create' class='grid gap-3 md:grid-cols-4 text-xs'>" +
+      "<div><label class='block text-slate-300 mb-1'>Parent Menu</label><select name='parent_id' class='w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500'><option value=''>— Menu Utama —</option>" +
+      mainMenuOptions +
+      "</select></div>" +
+      "<div><label class='block text-slate-300 mb-1'>Keyword</label><input name='keyword' class='w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500' placeholder='1, 2, 31, dll' required /></div>" +
+      "<div><label class='block text-slate-300 mb-1'>Deskripsi</label><input name='description' class='w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500' placeholder='Nama menu' required /></div>" +
+      "<div><label class='block text-slate-300 mb-1'>URL (opsional)</label><input name='url' class='w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500' placeholder='http://...' /></div>" +
+      "<div class='md:col-span-4 flex justify-end'><button type='submit' class='inline-flex items-center rounded-xl bg-emerald-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow-sm hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-slate-900 transition'>Tambah Menu</button></div>" +
+      "</form>" +
+      "</section>" +
+      '<section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg shadow-black/40">' +
+      "<h2 class='text-sm font-semibold mb-3 text-slate-200'>Daftar Menu" +
+      (menus && menus.length > 0
+        ? " <span class='text-xs text-slate-400'>(Total: " +
+          menus.length +
+          ")</span>"
+        : "") +
+      "</h2>" +
+      '<div class="overflow-x-auto">' +
+      '<table class="min-w-full text-xs border-separate border-spacing-0">' +
+      '<thead><tr class="bg-slate-800/70">' +
+      '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70 rounded-tl-xl">ID</th>' +
+      '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Parent</th>' +
+      '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Keyword</th>' +
+      '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Deskripsi</th>' +
+      '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">URL</th>' +
+      '<th class="text-right px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70 rounded-tr-xl">Aksi</th>' +
+      "</tr></thead>" +
+      "<tbody id='menu-table-body'>" +
+      menuRows +
+      "</tbody>" +
+      "</table>" +
+      "</div>" +
+      "</section>" +
+      "</div>" +
+      // Modal Edit Menu
+      '<div id="editMenuModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">' +
+      '<div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl max-w-md w-full p-6">' +
+      '<h3 class="text-lg font-semibold mb-4 text-slate-200">Edit Menu</h3>' +
+      '<form id="editMenuForm" class="space-y-3 text-xs">' +
+      '<input type="hidden" id="editMenuId" name="id" />' +
+      '<div><label class="block text-slate-300 mb-1">Parent Menu</label><select id="editMenuParent" name="parent_id" class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"><option value="">— Menu Utama —</option>' +
+      mainMenuOptions +
+      "</select></div>" +
+      '<div><label class="block text-slate-300 mb-1">Keyword</label><input type="text" id="editMenuKeyword" name="keyword" required class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500" placeholder="Keyword" /></div>' +
+      '<div><label class="block text-slate-300 mb-1">Deskripsi</label><input type="text" id="editMenuDescription" name="description" required class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500" placeholder="Deskripsi" /></div>' +
+      '<div><label class="block text-slate-300 mb-1">URL (opsional)</label><input type="text" id="editMenuUrl" name="url" class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500" placeholder="URL" /></div>' +
+      '<div class="flex gap-2 justify-end pt-2">' +
+      '<button type="button" onclick="closeEditModal()" class="px-4 py-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-200 text-xs font-medium hover:bg-slate-700">Batal</button>' +
+      '<button type="submit" class="px-4 py-2 rounded-lg bg-sky-500 text-slate-950 text-xs font-semibold hover:bg-sky-400">Simpan</button>' +
+      "</div>" +
+      "</form>" +
+      "</div>" +
+      "</div>" +
+      "<script>" +
+      "window.openEditModal=function(id,parentId,keyword,description,url){" +
+      "const modal=document.getElementById('editMenuModal');" +
+      "if(!modal){alert('Modal tidak ditemukan');return;}" +
+      "document.getElementById('editMenuId').value=id||'';" +
+      "const parentSelect=document.getElementById('editMenuParent');" +
+      "if(parentSelect){parentSelect.value=parentId===null||parentId===undefined||parentId==='null'?'':String(parentId);}" +
+      "document.getElementById('editMenuKeyword').value=keyword||'';" +
+      "document.getElementById('editMenuDescription').value=description||'';" +
+      "document.getElementById('editMenuUrl').value=url||'';" +
+      "modal.classList.remove('hidden');" +
+      "};" +
+      "window.closeEditModal=function(){" +
+      "const modal=document.getElementById('editMenuModal');" +
+      "if(modal){modal.classList.add('hidden');}" +
+      "};" +
+      "document.addEventListener('DOMContentLoaded',function(){" +
+      "const params=new URLSearchParams(window.location.search);" +
+      "const mErr=params.get('menuError');const mOk=params.get('menuSuccess');" +
+      "if(mErr){Swal.fire({icon:'error',title:'Gagal',text:mErr});const cleanUrl=window.location.origin+window.location.pathname;window.history.replaceState({},'',cleanUrl);}" +
+      "if(mOk){Swal.fire({icon:'success',title:'Berhasil',text:mOk});const cleanUrl2=window.location.origin+window.location.pathname;window.history.replaceState({},'',cleanUrl2);}" +
+      "const editForm=document.getElementById('editMenuForm');" +
+      "if(editForm){" +
+      "editForm.addEventListener('submit',async function(e){" +
+      "e.preventDefault();" +
+      "e.stopPropagation();" +
+      "const id=document.getElementById('editMenuId').value;" +
+      "if(!id){Swal.fire({icon:'warning',title:'Validasi',text:'ID menu tidak ditemukan'});return false;}" +
+      "const pValue=document.getElementById('editMenuParent').value;" +
+      "const p=pValue===''||pValue===null||pValue===undefined?null:parseInt(pValue);" +
+      "if(isNaN(p)){p=null;}" +
+      "const k=document.getElementById('editMenuKeyword').value.trim();" +
+      "const d=document.getElementById('editMenuDescription').value.trim();" +
+      "const u=document.getElementById('editMenuUrl').value.trim();" +
+      "if(!k||!d){Swal.fire({icon:'warning',title:'Validasi',text:'Keyword dan Deskripsi wajib diisi'});return false;}" +
+      "try{" +
+      "const res=await fetch('" +
+      baseUrl +
+      "/bot-menu/'+id+'/update',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({parent_id:p,keyword:k,description:d,url:u||null})});" +
+      "if(!res.ok){const data=await res.json().catch(()=>({error:'Gagal mengupdate menu'}));throw new Error(data.error||'Gagal mengupdate menu');}" +
+      "Swal.fire({icon:'success',title:'Berhasil',text:'Menu berhasil diupdate.'}).then(function(){window.location.reload();});" +
+      "}catch(e){Swal.fire({icon:'error',title:'Gagal',text:e.message||'Terjadi kesalahan.'});}" +
+      "});" +
+      "}" +
+      "document.addEventListener('submit',function(e){" +
+      "if(e.target&&e.target.classList&&e.target.classList.contains('delete-menu-form')){" +
+      "e.preventDefault();" +
+      "e.stopPropagation();" +
+      "const formElement=e.target;" +
+      "Swal.fire({title:'Hapus menu?',text:'Menu akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.',icon:'warning',showCancelButton:true,confirmButtonColor:'#ef4444',cancelButtonColor:'#64748b',confirmButtonText:'Ya, hapus',cancelButtonText:'Batal'}).then(function(result){if(result.isConfirmed){formElement.submit();}});" +
+      "return false;" +
+      "}" +
+      "});" +
+      "const modalEl=document.getElementById('editMenuModal');" +
+      "if(modalEl){" +
+      "modalEl.addEventListener('click',function(e){" +
+      "if(e.target.id==='editMenuModal'){window.closeEditModal();}" +
+      "});" +
+      "}" +
+      "});" +
+      "</script>" +
+      "</body>" +
+      "</html>";
+
+    res.send(html);
+  });
+});
+
+// POST create menu
+app.post("/bot-menu/create", requireAuth, function (req, res) {
+  var parentId = req.body.parent_id ? parseInt(req.body.parent_id) : null;
+  var keyword = (req.body.keyword || "").trim();
+  var description = (req.body.description || "").trim();
+  var url = (req.body.url || "").trim();
+
+  if (!keyword || !description) {
+    return res.redirect(
+      "/bot-menu?menuError=" +
+        encodeURIComponent("Keyword dan Deskripsi wajib diisi.")
+    );
+  }
+
+  db.createMenu(
+    {
+      parent_id: parentId,
+      keyword: keyword,
+      description: description,
+      url: url || null,
+    },
+    function (err) {
+      if (err) {
+        console.error("DB createMenu error:", err);
+        return res.redirect(
+          "/bot-menu?menuError=" +
+            encodeURIComponent("Gagal menambah menu. " + (err.message || ""))
+        );
+      }
+      res.redirect(
+        "/bot-menu?menuSuccess=" +
+          encodeURIComponent("Menu berhasil ditambahkan.")
+      );
+    }
+  );
+});
+
+// POST update menu
+app.post("/bot-menu/:id/update", requireAuthApi, function (req, res) {
+  var id = req.params.id;
+  var parentId = null;
+  if (
+    req.body.parent_id !== null &&
+    req.body.parent_id !== undefined &&
+    req.body.parent_id !== ""
+  ) {
+    var parsed = parseInt(req.body.parent_id);
+    if (!isNaN(parsed)) {
+      parentId = parsed;
+    }
+  }
+  var keyword = (req.body.keyword || "").trim();
+  var description = (req.body.description || "").trim();
+  var url = (req.body.url || "").trim();
+
+  if (!keyword || !description) {
+    return res
+      .status(400)
+      .json({ error: "Keyword dan Deskripsi wajib diisi." });
+  }
+
+  db.updateMenu(
+    id,
+    {
+      parent_id: parentId,
+      keyword: keyword,
+      description: description,
+      url: url || null,
+    },
+    function (err, row) {
+      if (err) {
+        console.error("DB updateMenu error:", err);
+        return res.status(500).json({ error: err.message || String(err) });
+      }
+      if (!row) {
+        return res.status(404).json({ error: "Menu tidak ditemukan." });
+      }
+      res.json({ ok: true, menu: row });
+    }
+  );
+});
+
+// POST delete menu
+app.post("/bot-menu/:id/delete", requireAuth, function (req, res) {
+  var id = req.params.id;
+
+  db.deleteMenu(id, function (err) {
+    if (err) {
+      console.error("DB deleteMenu error:", err);
+      return res.redirect(
+        "/bot-menu?menuError=" + encodeURIComponent("Gagal menghapus menu.")
+      );
+    }
+    res.redirect(
+      "/bot-menu?menuSuccess=" + encodeURIComponent("Menu berhasil dihapus.")
+    );
+  });
 });
 
 var port = process.env.PORT || 3000;
