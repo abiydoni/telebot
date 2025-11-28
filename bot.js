@@ -171,7 +171,11 @@ function startBot(selectedToken) {
               headers: {
                 "User-Agent": "TelegramBot/1.0",
                 Accept: "text/html,application/json,text/plain,*/*",
+                "Accept-Encoding": "identity", // Hindari compression
+                Connection: "close",
               },
+              // Untuk HTTPS, tambahkan opsi untuk mengabaikan SSL error jika perlu
+              rejectUnauthorized: true,
             };
 
             var req = client.request(options, function (res) {
@@ -213,13 +217,42 @@ function startBot(selectedToken) {
                   );
                 }
                 // Jika tidak ada location header tapi status code adalah redirect,
-                // coba ubah HTTP ke HTTPS
+                // coba beberapa opsi
+                console.warn(
+                  "Redirect status code",
+                  res.statusCode,
+                  "tanpa location header untuk",
+                  urlString
+                );
+
+                // Coba ubah HTTP ke HTTPS
                 if (urlObj.protocol === "http:") {
                   var httpsUrl = urlString.replace(/^http:/, "https:");
                   console.log("Mencoba HTTPS sebagai gantinya:", httpsUrl);
                   res.destroy();
                   return fetchWithRedirect(
                     httpsUrl,
+                    maxRedirects - 1,
+                    callback
+                  );
+                }
+
+                // Jika sudah HTTPS, coba variasi path
+                var pathVariations = [];
+                if (!urlObj.path.endsWith("/")) {
+                  pathVariations.push(urlString + "/");
+                }
+                if (urlObj.path.endsWith("/") && urlObj.path !== "/") {
+                  pathVariations.push(
+                    urlString.substring(0, urlString.length - 1)
+                  );
+                }
+
+                if (pathVariations.length > 0 && maxRedirects > 1) {
+                  console.log("Mencoba variasi path:", pathVariations[0]);
+                  res.destroy();
+                  return fetchWithRedirect(
+                    pathVariations[0],
                     maxRedirects - 1,
                     callback
                   );
@@ -247,12 +280,61 @@ function startBot(selectedToken) {
                     res.statusCode
                   );
 
-                  // Jika URL menggunakan HTTP, coba dengan HTTPS
-                  if (urlObj.protocol === "http:") {
-                    var httpsUrl = urlString.replace(/^http:/, "https:");
-                    console.log("Mencoba HTTPS sebagai gantinya:", httpsUrl);
+                  // Coba ekstrak redirect URL dari HTML jika ada
+                  var locationMatch = trimmedData.match(
+                    /<meta[^>]*http-equiv=["']refresh["'][^>]*content=["'][^"']*url=([^"'>]+)/i
+                  );
+                  if (locationMatch && locationMatch[1]) {
+                    var extractedUrl = locationMatch[1].trim();
+                    if (!extractedUrl.match(/^https?:\/\//)) {
+                      var baseUrl =
+                        urlObj.protocol +
+                        "//" +
+                        urlObj.hostname +
+                        (urlObj.port ? ":" + urlObj.port : "");
+                      extractedUrl = url.resolve(baseUrl, extractedUrl);
+                    }
+                    console.log(
+                      "Mengikuti redirect dari meta tag:",
+                      extractedUrl
+                    );
                     return fetchWithRedirect(
-                      httpsUrl,
+                      extractedUrl,
+                      maxRedirects - 1,
+                      callback
+                    );
+                  }
+
+                  // Coba variasi URL
+                  var urlVariations = [];
+
+                  // Jika path tidak berakhir dengan slash, coba dengan slash
+                  if (!urlObj.path.endsWith("/")) {
+                    urlVariations.push(urlString + "/");
+                  }
+
+                  // Jika path berakhir dengan slash, coba tanpa slash
+                  if (urlObj.path.endsWith("/") && urlObj.path !== "/") {
+                    urlVariations.push(
+                      urlString.substring(0, urlString.length - 1)
+                    );
+                  }
+
+                  // Coba dengan www jika tidak ada
+                  if (!urlObj.hostname.startsWith("www.")) {
+                    var wwwUrl = urlString.replace(
+                      urlObj.hostname,
+                      "www." + urlObj.hostname
+                    );
+                    urlVariations.push(wwwUrl);
+                  }
+
+                  // Coba variasi URL yang ada
+                  if (urlVariations.length > 0 && maxRedirects > 1) {
+                    var nextUrl = urlVariations[0];
+                    console.log("Mencoba variasi URL:", nextUrl);
+                    return fetchWithRedirect(
+                      nextUrl,
                       maxRedirects - 1,
                       callback
                     );
@@ -262,7 +344,7 @@ function startBot(selectedToken) {
                     new Error(
                       "Server mengembalikan HTML error (301 redirect). URL: " +
                         urlString +
-                        ". Pastikan URL menggunakan protokol yang benar (HTTPS)."
+                        ". Coba periksa URL di database atau hubungi administrator."
                     )
                   );
                 }
