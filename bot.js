@@ -307,9 +307,15 @@ function startBot(selectedToken) {
 
             var replyText =
               data.trim() || "Maaf, data tidak tersedia untuk saat ini.";
-            bot.sendMessage(msg.chat.id, replyText).catch(function (e) {
-              console.error("Gagal kirim data dari URL:", e);
-            });
+            // Kirim dengan parse_mode Markdown untuk format teks
+            bot
+              .sendMessage(msg.chat.id, replyText, { parse_mode: "Markdown" })
+              .catch(function (err) {
+                // Jika Markdown gagal, kirim tanpa parse_mode
+                bot.sendMessage(msg.chat.id, replyText).catch(function (e) {
+                  console.error("Gagal kirim data dari URL:", e);
+                });
+              });
           });
         } else {
           // Jika tidak ada URL atau "Masih dalam pengembangan", tampilkan submenu
