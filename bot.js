@@ -129,50 +129,147 @@ function startBot(selectedToken) {
           item.url.trim() !== "" &&
           item.url !== "Masih dalam pengembangan"
         ) {
-          // Jika ada URL, ambil konten dari URL
+          // Jika ada URL, ambil konten dari URL dengan dukungan redirect
           var http = require("http");
           var https = require("https");
           var url = require("url");
 
-          var urlObj = url.parse(item.url);
-          var client = urlObj.protocol === "https:" ? https : http;
+          // Fungsi untuk fetch dengan mengikuti redirect
+          function fetchWithRedirect(urlString, maxRedirects, callback) {
+            if (maxRedirects <= 0) {
+              return callback(new Error("Terlalu banyak redirect"));
+            }
 
-          var req = client.get(item.url, function (res) {
-            var data = "";
-            res.on("data", function (chunk) {
-              data += chunk;
-            });
-            res.on("end", function () {
-              var replyText =
-                data.trim() || "Maaf, data tidak tersedia untuk saat ini.";
-              bot.sendMessage(msg.chat.id, replyText).catch(function (e) {
-                console.error("Gagal kirim data dari URL:", e);
+            var urlObj = url.parse(urlString);
+            var client = urlObj.protocol === "https:" ? https : http;
+
+            var options = {
+              hostname: urlObj.hostname,
+              port: urlObj.port || (urlObj.protocol === "https:" ? 443 : 80),
+              path: urlObj.path,
+              method: "GET",
+              headers: {
+                "User-Agent": "TelegramBot/1.0",
+                Accept: "text/html,application/json,text/plain,*/*",
+              },
+            };
+
+            var req = client.request(options, function (res) {
+              // Handle redirect (301, 302, 307, 308)
+              if (
+                res.statusCode >= 300 &&
+                res.statusCode < 400 &&
+                res.headers.location
+              ) {
+                var redirectUrl = res.headers.location;
+                // Jika redirect URL relatif, buat absolute URL
+                if (!redirectUrl.match(/^https?:\/\//)) {
+                  var baseUrl =
+                    urlObj.protocol +
+                    "//" +
+                    urlObj.hostname +
+                    (urlObj.port ? ":" + urlObj.port : "");
+                  redirectUrl = url.resolve(baseUrl, redirectUrl);
+                }
+                console.log(
+                  "Redirect dari",
+                  urlString,
+                  "ke",
+                  redirectUrl,
+                  "(" + res.statusCode + ")"
+                );
+                return fetchWithRedirect(
+                  redirectUrl,
+                  maxRedirects - 1,
+                  callback
+                );
+              }
+
+              // Jika bukan redirect, baca data
+              var data = "";
+              res.on("data", function (chunk) {
+                data += chunk;
+              });
+              res.on("end", function () {
+                // Cek jika response adalah HTML error page
+                var trimmedData = data.trim();
+                if (
+                  trimmedData.startsWith("<!DOCTYPE") ||
+                  trimmedData.startsWith("<html") ||
+                  trimmedData.toLowerCase().includes("301 moved permanently") ||
+                  trimmedData.toLowerCase().includes("moved permanently")
+                ) {
+                  console.error(
+                    "Response adalah HTML error (301/redirect):",
+                    urlString,
+                    "Status:",
+                    res.statusCode
+                  );
+                  // Jika masih ada redirect yang belum diikuti, coba lagi dengan URL yang benar
+                  if (
+                    res.statusCode >= 300 &&
+                    res.statusCode < 400 &&
+                    res.headers.location
+                  ) {
+                    var redirectUrl = res.headers.location;
+                    if (!redirectUrl.match(/^https?:\/\//)) {
+                      var baseUrl =
+                        urlObj.protocol +
+                        "//" +
+                        urlObj.hostname +
+                        (urlObj.port ? ":" + urlObj.port : "");
+                      redirectUrl = url.resolve(baseUrl, redirectUrl);
+                    }
+                    console.log("Mengikuti redirect ke:", redirectUrl);
+                    return fetchWithRedirect(
+                      redirectUrl,
+                      maxRedirects - 1,
+                      callback
+                    );
+                  }
+                  return callback(
+                    new Error(
+                      "Server mengembalikan HTML error (301 redirect). Pastikan URL menggunakan protokol yang benar (HTTPS)."
+                    )
+                  );
+                }
+                callback(null, data);
               });
             });
-          });
 
-          req.on("error", function (err) {
-            console.error("Error fetch URL:", err);
-            bot
-              .sendMessage(
-                msg.chat.id,
-                "Maaf, terjadi kesalahan saat mengambil data."
-              )
-              .catch(function (e) {
-                console.error("Gagal kirim error:", e);
-              });
-          });
+            req.on("error", function (err) {
+              callback(err);
+            });
 
-          req.setTimeout(10000, function () {
-            req.destroy();
-            bot
-              .sendMessage(
-                msg.chat.id,
-                "Maaf, waktu tunggu habis saat mengambil data."
-              )
-              .catch(function (e) {
-                console.error("Gagal kirim timeout:", e);
-              });
+            req.setTimeout(10000, function () {
+              req.destroy();
+              callback(new Error("Request timeout"));
+            });
+
+            req.end();
+          }
+
+          // Panggil fetch dengan redirect
+          fetchWithRedirect(item.url, 5, function (err, data) {
+            if (err) {
+              console.error("Error fetch URL:", err);
+              bot
+                .sendMessage(
+                  msg.chat.id,
+                  "Maaf, terjadi kesalahan saat mengambil data: " +
+                    (err.message || "Unknown error")
+                )
+                .catch(function (e) {
+                  console.error("Gagal kirim error:", e);
+                });
+              return;
+            }
+
+            var replyText =
+              data.trim() || "Maaf, data tidak tersedia untuk saat ini.";
+            bot.sendMessage(msg.chat.id, replyText).catch(function (e) {
+              console.error("Gagal kirim data dari URL:", e);
+            });
           });
         } else {
           // Jika tidak ada URL atau "Masih dalam pengembangan", tampilkan submenu
