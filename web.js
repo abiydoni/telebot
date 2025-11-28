@@ -795,19 +795,32 @@ function renderDashboard(
       );
     })
     .map(function (g) {
+      var chatId = String(g.id || "");
+      var displayId = chatId || "(tidak ada ID)";
       return (
-        "<tr>" +
-        "<td>" +
-        g.id +
+        "<tr class='hover:bg-slate-800/50 transition'>" +
+        "<td class='px-3 py-2 border-b border-slate-800/50'>" +
+        "<div class='flex items-center gap-2'>" +
+        "<span class='font-mono text-xs text-sky-300' data-chat-id='" +
+        chatId +
+        "'>" +
+        displayId +
+        "</span>" +
+        "<button onclick='copyChatId(\"" +
+        chatId.replace(/"/g, "&quot;") +
+        "\")' class='inline-flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-[10px] text-slate-300 hover:text-sky-300 transition' title='Copy Chat ID'>" +
+        "<span class='mr-1'>📋</span>Copy" +
+        "</button>" +
+        "</div>" +
         "</td>" +
-        "<td>" +
-        (g.title || "") +
+        "<td class='px-3 py-2 border-b border-slate-800/50 text-slate-200'>" +
+        (g.title || g.username || "-") +
         "</td>" +
-        "<td>" +
-        (g.type || "") +
+        "<td class='px-3 py-2 border-b border-slate-800/50 text-slate-400 text-xs'>" +
+        (g.type || "-") +
         "</td>" +
-        "<td>" +
-        (g.updatedAt || "") +
+        "<td class='px-3 py-2 border-b border-slate-800/50 text-slate-400 text-xs'>" +
+        (g.updatedAt ? new Date(g.updatedAt).toLocaleString("id-ID") : "-") +
         "</td>" +
         "</tr>"
       );
@@ -818,24 +831,40 @@ function renderDashboard(
     .filter(function (g) {
       return (
         g.type === "private" ||
-        (typeof g.id === "number" && g.id > 0) ||
-        (typeof g.id === "string" && g.id.indexOf("-") !== 0)
+        (typeof g.id === "number" && g.id > 0 && g.id < 1000000000000) ||
+        (typeof g.id === "string" &&
+          g.id.indexOf("-") !== 0 &&
+          !isNaN(parseInt(g.id)) &&
+          parseInt(g.id) > 0)
       );
     })
     .map(function (g) {
+      var chatId = String(g.id || "");
+      var displayId = chatId || "(tidak ada ID)";
       return (
-        "<tr>" +
-        "<td>" +
-        g.id +
+        "<tr class='hover:bg-slate-800/50 transition'>" +
+        "<td class='px-3 py-2 border-b border-slate-800/50'>" +
+        "<div class='flex items-center gap-2'>" +
+        "<span class='font-mono text-xs text-sky-300' data-chat-id='" +
+        chatId +
+        "'>" +
+        displayId +
+        "</span>" +
+        "<button onclick='copyChatId(\"" +
+        chatId.replace(/"/g, "&quot;") +
+        "\")' class='inline-flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-[10px] text-slate-300 hover:text-sky-300 transition' title='Copy Chat ID'>" +
+        "<span class='mr-1'>📋</span>Copy" +
+        "</button>" +
+        "</div>" +
         "</td>" +
-        "<td>" +
-        (g.title || g.username || "") +
+        "<td class='px-3 py-2 border-b border-slate-800/50 text-slate-200'>" +
+        (g.title || g.username || g.first_name || "-") +
         "</td>" +
-        "<td>" +
-        (g.type || "") +
+        "<td class='px-3 py-2 border-b border-slate-800/50 text-slate-400 text-xs'>" +
+        (g.type || "-") +
         "</td>" +
-        "<td>" +
-        (g.updatedAt || "") +
+        "<td class='px-3 py-2 border-b border-slate-800/50 text-slate-400 text-xs'>" +
+        (g.updatedAt ? new Date(g.updatedAt).toLocaleString("id-ID") : "-") +
         "</td>" +
         "</tr>"
       );
@@ -907,7 +936,11 @@ function renderDashboard(
     "<form method='POST' action='/dashboard/test' class='space-y-3 text-sm'>" +
     "<div>" +
     "<label class='block text-slate-300 mb-1'>Chat ID</label>" +
-    "<input type='text' name='chatId' required class='w-full rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 font-mono' placeholder='contoh: -1001234567890' />" +
+    "<div class='flex gap-2'>" +
+    "<input type='text' name='chatId' id='testChatId' required class='flex-1 rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 font-mono' placeholder='contoh: -1001234567890' />" +
+    "<button type='button' onclick='document.getElementById(\"testChatId\").value=\"\"' class='px-3 py-2 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs' title='Clear'>✕</button>" +
+    "</div>" +
+    "<p class='text-xs text-slate-400 mt-1'>Gunakan tombol Copy di tabel di bawah untuk mengisi Chat ID secara otomatis.</p>" +
     "</div>" +
     "<div>" +
     "<label class='block text-slate-300 mb-1'>Pesan</label>" +
@@ -963,7 +996,7 @@ function renderDashboard(
     "</tr></thead>" +
     "<tbody id='group-body'>" +
     (groupRows ||
-      "<tr><td colspan='4' class='px-3 py-4 text-center text-slate-400 text-sm'>Belum ada data grup.</td></tr>") +
+      "<tr><td colspan='4' class='px-3 py-4 text-center text-slate-400 text-sm'>Belum ada data grup. Tambahkan bot ke grup dan kirim pesan di grup tersebut untuk melihat Chat ID.</td></tr>") +
     "</tbody>" +
     "</table>" +
     "</div>" +
@@ -983,7 +1016,7 @@ function renderDashboard(
     "</tr></thead>" +
     "<tbody id='private-body'>" +
     (privateRows ||
-      "<tr><td colspan='4' class='px-3 py-4 text-center text-slate-400 text-sm'>Belum ada data private chat.</td></tr>") +
+      "<tr><td colspan='4' class='px-3 py-4 text-center text-slate-400 text-sm'>Belum ada data private chat. Mulai chat dengan bot untuk melihat Chat ID.</td></tr>") +
     "</tbody>" +
     "</table>" +
     "</div>" +
@@ -991,8 +1024,9 @@ function renderDashboard(
     "</section>" +
     "</div>" +
     "<script>" +
-    "function renderGroupRows(data){if(!data||!data.length){return \"<tr><td colspan='4' class='px-3 py-4 text-center text-slate-400 text-sm'>Belum ada data grup.</td></tr>\";}return data.map(function(g){return '<tr><td>'+g.id+'</td><td>'+(g.title||'')+'</td><td>'+(g.type||'')+'</td><td>'+(g.updatedAt||'')+'</td></tr>';}).join('');}" +
-    "function renderPrivateRows(data){if(!data||!data.length){return \"<tr><td colspan='4' class='px-3 py-4 text-center text-slate-400 text-sm'>Belum ada data private chat.</td></tr>\";}return data.map(function(g){return '<tr><td>'+g.id+'</td><td>'+(g.title||g.username||'')+'</td><td>'+(g.type||'')+'</td><td>'+(g.updatedAt||'')+'</td></tr>';}).join('');}" +
+    "function copyChatId(chatId){if(!chatId||chatId===''){alert('Chat ID tidak tersedia');return;}navigator.clipboard.writeText(chatId).then(function(){var toast=document.createElement('div');toast.className='fixed top-4 right-4 bg-emerald-600 text-white px-4 py-2 rounded-lg shadow-lg z-50';toast.textContent='Chat ID disalin: '+chatId;document.body.appendChild(toast);setTimeout(function(){toast.remove();},2000);var testInput=document.getElementById('testChatId');if(testInput){testInput.value=chatId;testInput.focus();}}).catch(function(err){console.error('Gagal copy:',err);alert('Gagal menyalin Chat ID. Silakan salin manual: '+chatId);});}" +
+    "function renderGroupRows(data){if(!data||!data.length){return \"<tr><td colspan='4' class='px-3 py-4 text-center text-slate-400 text-sm'>Belum ada data grup. Tambahkan bot ke grup dan kirim pesan di grup tersebut untuk melihat Chat ID.</td></tr>\";}return data.map(function(g){var chatId=String(g.id||'');var displayId=chatId||'(tidak ada ID)';return '<tr class=\"hover:bg-slate-800/50 transition\"><td class=\"px-3 py-2 border-b border-slate-800/50\"><div class=\"flex items-center gap-2\"><span class=\"font-mono text-xs text-sky-300\">'+displayId+'</span><button onclick=\"copyChatId(\\''+chatId.replace(/'/g,\"\\\\'\")+'\\')\" class=\"inline-flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-[10px] text-slate-300 hover:text-sky-300 transition\" title=\"Copy Chat ID\"><span class=\"mr-1\">📋</span>Copy</button></div></td><td class=\"px-3 py-2 border-b border-slate-800/50 text-slate-200\">'+(g.title||g.username||'-')+'</td><td class=\"px-3 py-2 border-b border-slate-800/50 text-slate-400 text-xs\">'+(g.type||'-')+'</td><td class=\"px-3 py-2 border-b border-slate-800/50 text-slate-400 text-xs\">'+(g.updatedAt?new Date(g.updatedAt).toLocaleString('id-ID'):'-')+'</td></tr>';}).join('');}" +
+    "function renderPrivateRows(data){if(!data||!data.length){return \"<tr><td colspan='4' class='px-3 py-4 text-center text-slate-400 text-sm'>Belum ada data private chat. Mulai chat dengan bot untuk melihat Chat ID.</td></tr>\";}return data.map(function(g){var chatId=String(g.id||'');var displayId=chatId||'(tidak ada ID)';return '<tr class=\"hover:bg-slate-800/50 transition\"><td class=\"px-3 py-2 border-b border-slate-800/50\"><div class=\"flex items-center gap-2\"><span class=\"font-mono text-xs text-sky-300\">'+displayId+'</span><button onclick=\"copyChatId(\\''+chatId.replace(/'/g,\"\\\\'\")+'\\')\" class=\"inline-flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-[10px] text-slate-300 hover:text-sky-300 transition\" title=\"Copy Chat ID\"><span class=\"mr-1\">📋</span>Copy</button></div></td><td class=\"px-3 py-2 border-b border-slate-800/50 text-slate-200\">'+(g.title||g.username||g.first_name||'-')+'</td><td class=\"px-3 py-2 border-b border-slate-800/50 text-slate-400 text-xs\">'+(g.type||'-')+'</td><td class=\"px-3 py-2 border-b border-slate-800/50 text-slate-400 text-xs\">'+(g.updatedAt?new Date(g.updatedAt).toLocaleString('id-ID'):'-')+'</td></tr>';}).join('');}" +
     "async function refreshChatTables(){try{var gRes=await fetch('/api/groups');var pRes=await fetch('/api/private');if(!gRes.ok||!pRes.ok){return;}var groups=await gRes.json();var priv=await pRes.json();var gBody=document.getElementById('group-body');var pBody=document.getElementById('private-body');if(gBody){gBody.innerHTML=renderGroupRows(groups);}if(pBody){pBody.innerHTML=renderPrivateRows(priv);}}catch(e){console.error('Gagal refresh tabel chat',e);}}" +
     "setInterval(refreshChatTables,7000);" +
     "window.addEventListener('load',refreshChatTables);" +

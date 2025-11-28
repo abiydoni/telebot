@@ -81,10 +81,16 @@ function startBot(selectedToken) {
         id: msg.chat.id,
         title: msg.chat.title || msg.chat.first_name || "",
         username: msg.chat.username || "",
+        first_name: msg.chat.first_name || "",
         type: msg.chat.type,
         updatedAt: new Date().toISOString(),
       };
-      console.log("Chat terdaftar/diupdate di dashboard:", msg.chat.id);
+      console.log("Chat terdaftar/diupdate di dashboard:", {
+        id: msg.chat.id,
+        type: msg.chat.type,
+        title: msg.chat.title || msg.chat.first_name || "",
+        username: msg.chat.username || "",
+      });
     }
 
     // Handler balas otomatis untuk pesan "menu" dan angka menu
@@ -513,7 +519,12 @@ module.exports = {
   },
   getGroups: function () {
     return Object.keys(groups).map(function (id) {
-      return groups[id];
+      var chat = groups[id];
+      // Pastikan ID selalu berupa string untuk konsistensi
+      if (chat && chat.id !== undefined) {
+        chat.id = String(chat.id);
+      }
+      return chat;
     });
   },
   getBotInfo: function () {
