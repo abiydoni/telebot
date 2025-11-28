@@ -134,11 +134,31 @@ function startBot(selectedToken) {
           var https = require("https");
           var url = require("url");
 
+          // Normalisasi URL: jika URL menggunakan HTTP untuk domain tertentu, ubah ke HTTPS
+          var normalizedUrl = item.url.trim();
+          // Jika URL menggunakan HTTP dan domain mengandung appsbee atau rt07, ubah ke HTTPS
+          if (
+            normalizedUrl.match(/^http:\/\//) &&
+            (normalizedUrl.includes("appsbee") ||
+              normalizedUrl.includes("rt07"))
+          ) {
+            normalizedUrl = normalizedUrl.replace(/^http:/, "https:");
+            console.log("URL dinormalisasi dari HTTP ke HTTPS:", normalizedUrl);
+          }
+
           // Fungsi untuk fetch dengan mengikuti redirect
           function fetchWithRedirect(urlString, maxRedirects, callback) {
             if (maxRedirects <= 0) {
               return callback(new Error("Terlalu banyak redirect"));
             }
+
+            console.log(
+              "Fetching URL:",
+              urlString,
+              "(redirects left:",
+              maxRedirects,
+              ")"
+            );
 
             var urlObj = url.parse(urlString);
             var client = urlObj.protocol === "https:" ? https : http;
@@ -155,34 +175,55 @@ function startBot(selectedToken) {
             };
 
             var req = client.request(options, function (res) {
-              // Handle redirect (301, 302, 307, 308)
-              if (
-                res.statusCode >= 300 &&
-                res.statusCode < 400 &&
-                res.headers.location
-              ) {
-                var redirectUrl = res.headers.location;
-                // Jika redirect URL relatif, buat absolute URL
-                if (!redirectUrl.match(/^https?:\/\//)) {
-                  var baseUrl =
-                    urlObj.protocol +
-                    "//" +
-                    urlObj.hostname +
-                    (urlObj.port ? ":" + urlObj.port : "");
-                  redirectUrl = url.resolve(baseUrl, redirectUrl);
+              console.log(
+                "Response status:",
+                res.statusCode,
+                "from",
+                urlString
+              );
+              console.log("Response headers:", JSON.stringify(res.headers));
+
+              // Handle redirect (301, 302, 307, 308) - cek SEBELUM membaca body
+              if (res.statusCode >= 300 && res.statusCode < 400) {
+                // Jika ada location header, ikuti redirect
+                if (res.headers.location) {
+                  var redirectUrl = res.headers.location;
+                  // Jika redirect URL relatif, buat absolute URL
+                  if (!redirectUrl.match(/^https?:\/\//)) {
+                    var baseUrl =
+                      urlObj.protocol +
+                      "//" +
+                      urlObj.hostname +
+                      (urlObj.port ? ":" + urlObj.port : "");
+                    redirectUrl = url.resolve(baseUrl, redirectUrl);
+                  }
+                  console.log(
+                    "Redirect dari",
+                    urlString,
+                    "ke",
+                    redirectUrl,
+                    "(" + res.statusCode + ")"
+                  );
+                  // Hentikan pembacaan body dan ikuti redirect
+                  res.destroy();
+                  return fetchWithRedirect(
+                    redirectUrl,
+                    maxRedirects - 1,
+                    callback
+                  );
                 }
-                console.log(
-                  "Redirect dari",
-                  urlString,
-                  "ke",
-                  redirectUrl,
-                  "(" + res.statusCode + ")"
-                );
-                return fetchWithRedirect(
-                  redirectUrl,
-                  maxRedirects - 1,
-                  callback
-                );
+                // Jika tidak ada location header tapi status code adalah redirect,
+                // coba ubah HTTP ke HTTPS
+                if (urlObj.protocol === "http:") {
+                  var httpsUrl = urlString.replace(/^http:/, "https:");
+                  console.log("Mencoba HTTPS sebagai gantinya:", httpsUrl);
+                  res.destroy();
+                  return fetchWithRedirect(
+                    httpsUrl,
+                    maxRedirects - 1,
+                    callback
+                  );
+                }
               }
 
               // Jika bukan redirect, baca data
@@ -205,31 +246,23 @@ function startBot(selectedToken) {
                     "Status:",
                     res.statusCode
                   );
-                  // Jika masih ada redirect yang belum diikuti, coba lagi dengan URL yang benar
-                  if (
-                    res.statusCode >= 300 &&
-                    res.statusCode < 400 &&
-                    res.headers.location
-                  ) {
-                    var redirectUrl = res.headers.location;
-                    if (!redirectUrl.match(/^https?:\/\//)) {
-                      var baseUrl =
-                        urlObj.protocol +
-                        "//" +
-                        urlObj.hostname +
-                        (urlObj.port ? ":" + urlObj.port : "");
-                      redirectUrl = url.resolve(baseUrl, redirectUrl);
-                    }
-                    console.log("Mengikuti redirect ke:", redirectUrl);
+
+                  // Jika URL menggunakan HTTP, coba dengan HTTPS
+                  if (urlObj.protocol === "http:") {
+                    var httpsUrl = urlString.replace(/^http:/, "https:");
+                    console.log("Mencoba HTTPS sebagai gantinya:", httpsUrl);
                     return fetchWithRedirect(
-                      redirectUrl,
+                      httpsUrl,
                       maxRedirects - 1,
                       callback
                     );
                   }
+
                   return callback(
                     new Error(
-                      "Server mengembalikan HTML error (301 redirect). Pastikan URL menggunakan protokol yang benar (HTTPS)."
+                      "Server mengembalikan HTML error (301 redirect). URL: " +
+                        urlString +
+                        ". Pastikan URL menggunakan protokol yang benar (HTTPS)."
                     )
                   );
                 }
@@ -238,6 +271,13 @@ function startBot(selectedToken) {
             });
 
             req.on("error", function (err) {
+              console.error("Request error untuk", urlString, ":", err);
+              // Jika error dan URL menggunakan HTTP, coba HTTPS
+              if (urlObj.protocol === "http:" && maxRedirects > 0) {
+                var httpsUrl = urlString.replace(/^http:/, "https:");
+                console.log("Error dengan HTTP, mencoba HTTPS:", httpsUrl);
+                return fetchWithRedirect(httpsUrl, maxRedirects - 1, callback);
+              }
               callback(err);
             });
 
@@ -250,7 +290,7 @@ function startBot(selectedToken) {
           }
 
           // Panggil fetch dengan redirect
-          fetchWithRedirect(item.url, 5, function (err, data) {
+          fetchWithRedirect(normalizedUrl, 5, function (err, data) {
             if (err) {
               console.error("Error fetch URL:", err);
               bot
