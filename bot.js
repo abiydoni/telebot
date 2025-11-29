@@ -287,7 +287,9 @@ function startBot(selectedToken) {
       }
 
       var userId = String(msg.from.id);
-      var inlineKeyboard = {
+
+      // Buat inline keyboard dengan format yang benar
+      var keyboard = {
         inline_keyboard: [
           [
             {
@@ -299,37 +301,50 @@ function startBot(selectedToken) {
         ],
       };
 
-      var options = {
-        reply_markup: inlineKeyboard,
+      console.log("Sending quiz confirmation to chat:", msg.chat.id);
+      console.log("User ID:", userId);
+      console.log("Keyboard:", JSON.stringify(keyboard));
+
+      // Kirim dengan reply_markup
+      var sendOptions = {
+        reply_markup: keyboard,
         parse_mode: "Markdown",
       };
 
-      console.log("Sending quiz confirmation to chat:", msg.chat.id);
-      console.log("Keyboard data:", JSON.stringify(inlineKeyboard, null, 2));
-
       bot
-        .sendMessage(msg.chat.id, confirmText, options)
-        .then(function (sentMessage) {
+        .sendMessage(msg.chat.id, confirmText, sendOptions)
+        .then(function (result) {
           console.log(
-            "Quiz confirmation sent successfully, message ID:",
-            sentMessage.message_id
+            "✅ Quiz confirmation sent! Message ID:",
+            result.message_id
+          );
+          console.log(
+            "Reply markup applied:",
+            result.reply_markup ? "Yes" : "No"
           );
         })
-        .catch(function (e) {
-          console.error("Error sending quiz confirmation with Markdown:", e);
+        .catch(function (error) {
+          console.error("❌ Error:", error.message || error);
+
           // Fallback tanpa Markdown
+          var fallbackOptions = {
+            reply_markup: keyboard,
+          };
+
           bot
-            .sendMessage(msg.chat.id, confirmText.replace(/\*/g, ""), {
-              reply_markup: inlineKeyboard,
-            })
-            .then(function (sentMessage) {
+            .sendMessage(
+              msg.chat.id,
+              confirmText.replace(/\*/g, ""),
+              fallbackOptions
+            )
+            .then(function (result) {
               console.log(
-                "Quiz confirmation sent (fallback), message ID:",
-                sentMessage.message_id
+                "✅ Sent with fallback! Message ID:",
+                result.message_id
               );
             })
             .catch(function (err) {
-              console.error("Gagal kirim konfirmasi quiz (fallback):", err);
+              console.error("❌ Fallback also failed:", err.message || err);
             });
         });
     } else if (/^\d{1,3}$/.test(messageText)) {
