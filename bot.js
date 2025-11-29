@@ -253,6 +253,25 @@ function startBot(selectedToken) {
       return;
     }
 
+    // Handler untuk konfirmasi quiz (Y atau T) - jika user mengetik langsung
+    if (/^[YT]$/i.test(messageText)) {
+      var userAnswer = messageText.toUpperCase();
+      if (userAnswer === "Y") {
+        // User memilih Y, mulai quiz
+        startQuiz(msg.chat.id, msg.from.id);
+      } else if (userAnswer === "T") {
+        // User memilih T, tampilkan notifikasi dan info menu
+        var cancelText = "❌ Quiz dibatalkan.\n\n";
+        cancelText += "Ketik *menu* untuk melihat daftar menu yang tersedia.";
+        bot
+          .sendMessage(msg.chat.id, cancelText, { parse_mode: "Markdown" })
+          .catch(function (e) {
+            bot.sendMessage(msg.chat.id, cancelText.replace(/\*/g, ""));
+          });
+      }
+      return;
+    }
+
     if (
       messageTextLower === "menu" ||
       messageTextLower === "/menu" ||
@@ -724,11 +743,11 @@ function startBot(selectedToken) {
     var data = callbackQuery.data;
     var userId = callbackQuery.from.id;
 
-    // Handler konfirmasi quiz
+    // Handler konfirmasi quiz - Y (Ya, Mulai Quiz)
     if (data && data.startsWith("quiz_start_")) {
       var callbackUserId = parseInt(data.split("_")[2]);
       if (callbackUserId === userId) {
-        // Hapus pesan konfirmasi
+        // Jawab callback query
         bot
           .answerCallbackQuery(callbackQuery.id, {
             text: "Quiz dimulai!",
@@ -737,7 +756,7 @@ function startBot(selectedToken) {
             console.error("Error answer callback:", e);
           });
 
-        // Mulai quiz
+        // Mulai quiz - langsung tampilkan pertanyaan
         startQuiz(msg.chat.id, userId);
       } else {
         bot
@@ -749,9 +768,12 @@ function startBot(selectedToken) {
             console.error("Error answer callback:", e);
           });
       }
-    } else if (data && data.startsWith("quiz_cancel_")) {
+    }
+    // Handler konfirmasi quiz - T (Tidak, Batal)
+    else if (data && data.startsWith("quiz_cancel_")) {
       var callbackUserId = parseInt(data.split("_")[2]);
       if (callbackUserId === userId) {
+        // Jawab callback query
         bot
           .answerCallbackQuery(callbackQuery.id, {
             text: "Quiz dibatalkan",
@@ -760,17 +782,13 @@ function startBot(selectedToken) {
             console.error("Error answer callback:", e);
           });
 
+        // Tampilkan notifikasi dan info menu
+        var cancelText = "❌ Quiz dibatalkan.\n\n";
+        cancelText += "Ketik *menu* untuk melihat daftar menu yang tersedia.";
         bot
-          .sendMessage(
-            msg.chat.id,
-            "❌ Quiz dibatalkan. Ketik *6* atau *quiz* jika ingin memulai quiz lagi.",
-            { parse_mode: "Markdown" }
-          )
+          .sendMessage(msg.chat.id, cancelText, { parse_mode: "Markdown" })
           .catch(function (e) {
-            bot.sendMessage(
-              msg.chat.id,
-              "❌ Quiz dibatalkan. Ketik 6 atau quiz jika ingin memulai quiz lagi."
-            );
+            bot.sendMessage(msg.chat.id, cancelText.replace(/\*/g, ""));
           });
       } else {
         bot
