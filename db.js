@@ -54,6 +54,36 @@ var dbPromise = initSqlJs().then(function (SQL) {
       ")"
   );
 
+  // Tabel quiz (untuk pertanyaan quiz)
+  db.run(
+    "CREATE TABLE IF NOT EXISTS tb_quiz (" +
+      "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+      "question TEXT NOT NULL," +
+      "option_a TEXT NOT NULL," +
+      "option_b TEXT NOT NULL," +
+      "option_c TEXT NOT NULL," +
+      "option_d TEXT NOT NULL," +
+      "correct_answer TEXT NOT NULL," +
+      "explanation TEXT," +
+      "createdAt TEXT DEFAULT (datetime('now'))," +
+      "updatedAt TEXT" +
+      ")"
+  );
+
+  // Tabel quiz_scores (untuk menyimpan skor user)
+  db.run(
+    "CREATE TABLE IF NOT EXISTS tb_quiz_scores (" +
+      "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+      "user_id INTEGER NOT NULL," +
+      "chat_id TEXT NOT NULL," +
+      "score INTEGER DEFAULT 0," +
+      "total_questions INTEGER DEFAULT 0," +
+      "last_played TEXT DEFAULT (datetime('now'))," +
+      "createdAt TEXT DEFAULT (datetime('now'))," +
+      "updatedAt TEXT" +
+      ")"
+  );
+
   // Isi data default untuk tb_botmenu jika belum ada
   var menuRes = db.exec("SELECT id FROM tb_botmenu LIMIT 1");
   if (!menuRes[0] || !menuRes[0].values || !menuRes[0].values.length) {
@@ -615,6 +645,168 @@ module.exports = {
         state.db.run("DELETE FROM tb_botmenu WHERE id = ?", [id]);
         persist(state);
         cb(null);
+      })
+      .catch(function (err) {
+        cb(err);
+      });
+  },
+
+  // QUIZ CRUD
+  // Ambil semua quiz
+  allQuiz: function (cb) {
+    dbPromise
+      .then(function (state) {
+        var res = state.db.exec(
+          "SELECT id, question, option_a, option_b, option_c, option_d, correct_answer, explanation FROM tb_quiz ORDER BY id ASC"
+        );
+        var rows =
+          res[0] && res[0].values
+            ? res[0].values.map(function (row) {
+                return {
+                  id: row[0],
+                  question: row[1],
+                  option_a: row[2],
+                  option_b: row[3],
+                  option_c: row[4],
+                  option_d: row[5],
+                  correct_answer: row[6],
+                  explanation: row[7] || "",
+                };
+              })
+            : [];
+        cb(null, rows);
+      })
+      .catch(function (err) {
+        cb(err);
+      });
+  },
+
+  // Ambil quiz random
+  getRandomQuiz: function (cb) {
+    dbPromise
+      .then(function (state) {
+        var res = state.db.exec(
+          "SELECT id, question, option_a, option_b, option_c, option_d, correct_answer, explanation FROM tb_quiz ORDER BY RANDOM() LIMIT 1"
+        );
+        var row = null;
+        if (res[0] && res[0].values && res[0].values[0]) {
+          var r = res[0].values[0];
+          row = {
+            id: r[0],
+            question: r[1],
+            option_a: r[2],
+            option_b: r[3],
+            option_c: r[4],
+            option_d: r[5],
+            correct_answer: r[6],
+            explanation: r[7] || "",
+          };
+        }
+        cb(null, row);
+      })
+      .catch(function (err) {
+        cb(err);
+      });
+  },
+
+  // Simpan atau update skor quiz
+  saveQuizScore: function (userId, chatId, score, totalQuestions, cb) {
+    dbPromise
+      .then(function (state) {
+        // Cek apakah sudah ada skor untuk user ini
+        var checkRes = state.db.exec(
+          "SELECT id FROM tb_quiz_scores WHERE user_id = " +
+            userId +
+            " AND chat_id = '" +
+            chatId.replace(/'/g, "''") +
+            "' LIMIT 1"
+        );
+
+        if (
+          checkRes[0] &&
+          checkRes[0].values &&
+          checkRes[0].values.length > 0
+        ) {
+          // Update skor yang sudah ada
+          state.db.run(
+            "UPDATE tb_quiz_scores SET score = ?, total_questions = ?, last_played = datetime('now'), updatedAt = datetime('now') WHERE user_id = ? AND chat_id = ?",
+            [score, totalQuestions, userId, chatId]
+          );
+        } else {
+          // Insert skor baru
+          state.db.run(
+            "INSERT INTO tb_quiz_scores (user_id, chat_id, score, total_questions, last_played, updatedAt) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))",
+            [userId, chatId, score, totalQuestions]
+          );
+        }
+        persist(state);
+        cb(null);
+      })
+      .catch(function (err) {
+        cb(err);
+      });
+  },
+
+  // Ambil skor user
+  getQuizScore: function (userId, chatId, cb) {
+    dbPromise
+      .then(function (state) {
+        var stmt = state.db.prepare(
+          "SELECT score, total_questions, last_played FROM tb_quiz_scores WHERE user_id = ? AND chat_id = ? LIMIT 1"
+        );
+        stmt.bind([userId, chatId]);
+        var row = null;
+        if (stmt.step()) {
+          var r = stmt.get();
+          row = {
+            score: r[0],
+            total_questions: r[1],
+            last_played: r[2],
+          };
+        }
+        stmt.free();
+        cb(null, row);
+      })
+      .catch(function (err) {
+        cb(err);
+      });
+  },
+
+  // Buat quiz baru
+  createQuiz: function (data, cb) {
+    dbPromise
+      .then(function (state) {
+        state.db.run(
+          "INSERT INTO tb_quiz (question, option_a, option_b, option_c, option_d, correct_answer, explanation, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+          [
+            data.question || null,
+            data.option_a || null,
+            data.option_b || null,
+            data.option_c || null,
+            data.option_d || null,
+            data.correct_answer || null,
+            data.explanation || null,
+          ]
+        );
+        var res = state.db.exec(
+          "SELECT id, question, option_a, option_b, option_c, option_d, correct_answer, explanation FROM tb_quiz ORDER BY id DESC LIMIT 1"
+        );
+        var row = null;
+        if (res[0] && res[0].values && res[0].values[0]) {
+          var r = res[0].values[0];
+          row = {
+            id: r[0],
+            question: r[1],
+            option_a: r[2],
+            option_b: r[3],
+            option_c: r[4],
+            option_d: r[5],
+            correct_answer: r[6],
+            explanation: r[7] || "",
+          };
+        }
+        persist(state);
+        cb(null, row);
       })
       .catch(function (err) {
         cb(err);
