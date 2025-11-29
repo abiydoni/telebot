@@ -812,4 +812,61 @@ module.exports = {
         cb(err);
       });
   },
+
+  // Update quiz
+  updateQuiz: function (id, data, cb) {
+    dbPromise
+      .then(function (state) {
+        state.db.run(
+          "UPDATE tb_quiz SET question = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?, correct_answer = ?, explanation = ?, updatedAt = datetime('now') WHERE id = ?",
+          [
+            data.question || null,
+            data.option_a || null,
+            data.option_b || null,
+            data.option_c || null,
+            data.option_d || null,
+            data.correct_answer || null,
+            data.explanation || null,
+            id,
+          ]
+        );
+        var res = state.db.exec(
+          "SELECT id, question, option_a, option_b, option_c, option_d, correct_answer, explanation FROM tb_quiz WHERE id = " +
+            id +
+            " LIMIT 1"
+        );
+        var row = null;
+        if (res[0] && res[0].values && res[0].values[0]) {
+          var r = res[0].values[0];
+          row = {
+            id: r[0],
+            question: r[1],
+            option_a: r[2],
+            option_b: r[3],
+            option_c: r[4],
+            option_d: r[5],
+            correct_answer: r[6],
+            explanation: r[7] || "",
+          };
+        }
+        persist(state);
+        cb(null, row);
+      })
+      .catch(function (err) {
+        cb(err);
+      });
+  },
+
+  // Hapus quiz
+  deleteQuiz: function (id, cb) {
+    dbPromise
+      .then(function (state) {
+        state.db.run("DELETE FROM tb_quiz WHERE id = ?", [id]);
+        persist(state);
+        cb(null);
+      })
+      .catch(function (err) {
+        cb(err);
+      });
+  },
 };

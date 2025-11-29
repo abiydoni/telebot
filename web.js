@@ -533,6 +533,18 @@ app.get("/", requireAuth, function (req, res) {
       '<div class="flex-shrink-0 text-slate-400 group-hover:text-amber-400 transition">→</div>' +
       "</div>" +
       "</a>" +
+      '<a href="/quiz" class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg shadow-black/40 hover:bg-slate-900/80 hover:border-purple-500/50 transition-all group">' +
+      '<div class="flex items-center gap-3">' +
+      '<div class="flex-shrink-0 w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center group-hover:bg-purple-500/20 transition">' +
+      '<span class="text-2xl">🎯</span>' +
+      "</div>" +
+      '<div class="flex-1 min-w-0">' +
+      '<h3 class="text-sm font-semibold text-slate-200 group-hover:text-purple-300 transition">Quiz</h3>' +
+      '<p class="text-xs text-slate-400 mt-0.5">Kelola pertanyaan quiz</p>' +
+      "</div>" +
+      '<div class="flex-shrink-0 text-slate-400 group-hover:text-purple-400 transition">→</div>' +
+      "</div>" +
+      "</a>" +
       "</section>" +
       // Tabel semua bot dari SQLite
       '<section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 shadow-lg shadow-black/40">' +
@@ -1756,6 +1768,403 @@ app.post("/bot-menu/:id/delete", requireAuth, function (req, res) {
     }
     res.redirect(
       "/bot-menu?menuSuccess=" + encodeURIComponent("Menu berhasil dihapus.")
+    );
+  });
+});
+
+// ====== Halaman Quiz (CRUD) ======
+
+app.get("/quiz", requireAuth, function (req, res) {
+  var baseUrl = getBaseUrl(req);
+  var quizError = req.query.quizError || null;
+  var quizSuccess = req.query.quizSuccess || null;
+
+  db.allQuiz(function (err, quizzes) {
+    if (err) {
+      console.error("DB allQuiz error:", err);
+      quizzes = [];
+      quizError = quizError || "Gagal memuat daftar quiz.";
+    }
+
+    var quizRows = "";
+    var hasQuizzes = quizzes && Array.isArray(quizzes) && quizzes.length > 0;
+
+    if (hasQuizzes) {
+      quizRows = quizzes
+        .map(function (q) {
+          var safeQuestion = (q.question || "")
+            .replace(/\\/g, "\\\\")
+            .replace(/"/g, '\\"')
+            .replace(/'/g, "\\'")
+            .replace(/\n/g, "\\n")
+            .replace(/\r/g, "\\r");
+          var safeOptionA = (q.option_a || "")
+            .replace(/\\/g, "\\\\")
+            .replace(/"/g, '\\"')
+            .replace(/'/g, "\\'");
+          var safeOptionB = (q.option_b || "")
+            .replace(/\\/g, "\\\\")
+            .replace(/"/g, '\\"')
+            .replace(/'/g, "\\'");
+          var safeOptionC = (q.option_c || "")
+            .replace(/\\/g, "\\\\")
+            .replace(/"/g, '\\"')
+            .replace(/'/g, "\\'");
+          var safeOptionD = (q.option_d || "")
+            .replace(/\\/g, "\\\\")
+            .replace(/"/g, '\\"')
+            .replace(/'/g, "\\'");
+          var safeCorrect = (q.correct_answer || "")
+            .replace(/\\/g, "\\\\")
+            .replace(/"/g, '\\"')
+            .replace(/'/g, "\\'");
+          var safeExplanation = (q.explanation || "")
+            .replace(/\\/g, "\\\\")
+            .replace(/"/g, '\\"')
+            .replace(/'/g, "\\'")
+            .replace(/\n/g, "\\n")
+            .replace(/\r/g, "\\r");
+
+          return (
+            "<tr>" +
+            "<td class='px-3 py-2 text-xs font-mono text-slate-300'>" +
+            (q.id || "") +
+            "</td>" +
+            "<td class='px-3 py-2 text-sm text-slate-200 max-w-md truncate'>" +
+            (q.question || "") +
+            "</td>" +
+            "<td class='px-3 py-2 text-xs text-slate-400'>" +
+            "A: " +
+            (q.option_a || "") +
+            "<br>" +
+            "B: " +
+            (q.option_b || "") +
+            "<br>" +
+            "C: " +
+            (q.option_c || "") +
+            "<br>" +
+            "D: " +
+            (q.option_d || "") +
+            "</td>" +
+            "<td class='px-3 py-2 text-xs font-mono text-center text-emerald-400'>" +
+            (q.correct_answer || "") +
+            "</td>" +
+            "<td class='px-3 py-2 text-xs text-slate-400 max-w-xs truncate'>" +
+            (q.explanation || "-") +
+            "</td>" +
+            "<td class='px-3 py-2 text-right text-xs space-x-1'>" +
+            "<button type='button' class='inline-flex items-center justify-center rounded-lg bg-sky-600 px-2 py-1 text-[11px] font-medium text-slate-50 hover:bg-sky-500' title='Edit quiz' onclick='openEditQuizModal(" +
+            q.id +
+            ", " +
+            JSON.stringify(q.question || "") +
+            ", " +
+            JSON.stringify(q.option_a || "") +
+            ", " +
+            JSON.stringify(q.option_b || "") +
+            ", " +
+            JSON.stringify(q.option_c || "") +
+            ", " +
+            JSON.stringify(q.option_d || "") +
+            ", " +
+            JSON.stringify(q.correct_answer || "") +
+            ", " +
+            JSON.stringify(q.explanation || "") +
+            ")'>&#9998;</button>" +
+            "<form method='POST' action='/quiz/" +
+            q.id +
+            "/delete' style='display:inline' class='delete-quiz-form'>" +
+            "<button type='submit' class='inline-flex items-center justify-center rounded-lg bg-rose-600 px-2 py-1 text-[11px] font-medium text-slate-50 hover:bg-rose-500' title='Hapus quiz'>&#128465;</button>" +
+            "</form>" +
+            "</td>" +
+            "</tr>"
+          );
+        })
+        .join("");
+      if (!quizRows || quizRows.length === 0) {
+        quizRows =
+          "<tr><td colspan='6' class='px-3 py-4 text-center text-rose-400 text-xs'>Error: Gagal render quiz</td></tr>";
+      }
+    } else {
+      quizRows =
+        "<tr><td colspan='6' class='px-3 py-4 text-center text-slate-400 text-xs'>Belum ada quiz. Tambahkan quiz baru di bawah.</td></tr>";
+    }
+
+    var html =
+      "<!DOCTYPE html>" +
+      "<html>" +
+      "<head>" +
+      '<meta charset="utf-8" />' +
+      "<title>Manajemen Quiz - Telegram Bot Manager</title>" +
+      '<script src="https://cdn.tailwindcss.com"></script>' +
+      '<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>' +
+      "</head>" +
+      '<body class="bg-slate-950 text-slate-100 min-h-screen">' +
+      '<div class="max-w-6xl mx-auto px-4 py-8 space-y-6">' +
+      '<header class="mb-4 flex items-center justify-between">' +
+      "<div>" +
+      '<h1 class="text-2xl font-semibold tracking-tight">🎯 Manajemen Quiz</h1>' +
+      '<p class="text-slate-400 text-sm mt-1">Kelola pertanyaan quiz yang akan ditampilkan ketika user mengirim pesan "6" atau "quiz".</p>' +
+      "</div>" +
+      "<div class='flex gap-2'>" +
+      "<a href='/' class='inline-flex items-center rounded-xl border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:border-slate-500 transition'>← Kembali ke Dashboard</a>" +
+      "<a href='/bot-menu' class='inline-flex items-center rounded-xl border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:border-slate-500 transition'>📋 Bot Menu</a>" +
+      "<form method='POST' action='/logout'>" +
+      "<button type='submit' class='inline-flex items-center rounded-xl bg-slate-800 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700'>Logout</button>" +
+      "</form>" +
+      "</div>" +
+      "</header>";
+
+    if (quizError) {
+      html +=
+        '<div class="rounded-xl border border-rose-500/50 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">' +
+        quizError +
+        "</div>";
+    }
+    if (quizSuccess) {
+      html +=
+        '<div class="rounded-xl border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">' +
+        quizSuccess +
+        "</div>";
+    }
+
+    html +=
+      '<section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg shadow-black/40">' +
+      "<h2 class='text-sm font-semibold mb-3 text-slate-200'>Tambah Quiz Baru</h2>" +
+      "<form method='POST' action='/quiz/create' class='grid gap-3 md:grid-cols-2 text-xs'>" +
+      "<div class='md:col-span-2'><label class='block text-slate-300 mb-1'>Pertanyaan</label><textarea name='question' rows='3' class='w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500' placeholder='Masukkan pertanyaan quiz' required></textarea></div>" +
+      "<div><label class='block text-slate-300 mb-1'>Pilihan A</label><input name='option_a' class='w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500' placeholder='Jawaban A' required /></div>" +
+      "<div><label class='block text-slate-300 mb-1'>Pilihan B</label><input name='option_b' class='w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500' placeholder='Jawaban B' required /></div>" +
+      "<div><label class='block text-slate-300 mb-1'>Pilihan C</label><input name='option_c' class='w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500' placeholder='Jawaban C' required /></div>" +
+      "<div><label class='block text-slate-300 mb-1'>Pilihan D</label><input name='option_d' class='w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500' placeholder='Jawaban D' required /></div>" +
+      "<div><label class='block text-slate-300 mb-1'>Jawaban Benar</label><select name='correct_answer' class='w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500' required><option value=''>Pilih jawaban benar</option><option value='A'>A</option><option value='B'>B</option><option value='C'>C</option><option value='D'>D</option></select></div>" +
+      "<div class='md:col-span-2'><label class='block text-slate-300 mb-1'>Penjelasan (opsional)</label><textarea name='explanation' rows='2' class='w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500' placeholder='Penjelasan jawaban yang benar'></textarea></div>" +
+      "<div class='md:col-span-2 flex justify-end'><button type='submit' class='inline-flex items-center rounded-xl bg-emerald-500 px-4 py-2 text-xs font-semibold text-slate-950 shadow-sm hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-slate-900 transition'>Tambah Quiz</button></div>" +
+      "</form>" +
+      "</section>" +
+      '<section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg shadow-black/40">' +
+      "<h2 class='text-sm font-semibold mb-3 text-slate-200'>Daftar Quiz" +
+      (quizzes && quizzes.length > 0
+        ? " <span class='text-xs text-slate-400'>(Total: " +
+          quizzes.length +
+          ")</span>"
+        : "") +
+      "</h2>" +
+      '<div class="overflow-x-auto">' +
+      '<table class="min-w-full text-xs border-separate border-spacing-0">' +
+      '<thead><tr class="bg-slate-800/70">' +
+      '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70 rounded-tl-xl">ID</th>' +
+      '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Pertanyaan</th>' +
+      '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Pilihan</th>' +
+      '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Jawaban Benar</th>' +
+      '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Penjelasan</th>' +
+      '<th class="text-right px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70 rounded-tr-xl">Aksi</th>' +
+      "</tr></thead>" +
+      "<tbody id='quiz-table-body'>" +
+      quizRows +
+      "</tbody>" +
+      "</table>" +
+      "</div>" +
+      "</section>" +
+      "</div>" +
+      // Modal Edit Quiz
+      '<div id="editQuizModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">' +
+      '<div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl max-w-md w-full p-6">' +
+      '<h3 class="text-lg font-semibold mb-4 text-slate-200">Edit Quiz</h3>' +
+      '<form id="editQuizForm" method="POST" class="space-y-3 text-xs">' +
+      '<input type="hidden" id="editQuizId" name="id" />' +
+      '<div><label class="block text-slate-300 mb-1">Pertanyaan</label><textarea id="editQuizQuestion" name="question" rows="3" class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500" required></textarea></div>' +
+      '<div class="grid grid-cols-2 gap-2">' +
+      '<div><label class="block text-slate-300 mb-1">Pilihan A</label><input id="editQuizOptionA" name="option_a" class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500" required /></div>' +
+      '<div><label class="block text-slate-300 mb-1">Pilihan B</label><input id="editQuizOptionB" name="option_b" class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500" required /></div>' +
+      '<div><label class="block text-slate-300 mb-1">Pilihan C</label><input id="editQuizOptionC" name="option_c" class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500" required /></div>' +
+      '<div><label class="block text-slate-300 mb-1">Pilihan D</label><input id="editQuizOptionD" name="option_d" class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500" required /></div>' +
+      "</div>" +
+      '<div><label class="block text-slate-300 mb-1">Jawaban Benar</label><select id="editQuizCorrect" name="correct_answer" class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500" required><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select></div>' +
+      '<div><label class="block text-slate-300 mb-1">Penjelasan (opsional)</label><textarea id="editQuizExplanation" name="explanation" rows="2" class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"></textarea></div>' +
+      '<div class="flex gap-2 justify-end pt-2">' +
+      '<button type="button" onclick="window.closeEditQuizModal()" class="px-3 py-1 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 text-xs">Batal</button>' +
+      '<button type="submit" class="px-3 py-1 rounded-lg bg-sky-600 text-slate-50 hover:bg-sky-500 text-xs">Simpan</button>' +
+      "</div>" +
+      "</form>" +
+      "</div>" +
+      "</div>" +
+      "<script>" +
+      "function openEditQuizModal(id,question,optionA,optionB,optionC,optionD,correct,explanation){" +
+      "document.getElementById('editQuizId').value=id;" +
+      "document.getElementById('editQuizQuestion').value=question;" +
+      "document.getElementById('editQuizOptionA').value=optionA;" +
+      "document.getElementById('editQuizOptionB').value=optionB;" +
+      "document.getElementById('editQuizOptionC').value=optionC;" +
+      "document.getElementById('editQuizOptionD').value=optionD;" +
+      "document.getElementById('editQuizCorrect').value=correct;" +
+      "document.getElementById('editQuizExplanation').value=explanation||'';" +
+      "document.getElementById('editQuizForm').action='/quiz/'+id+'/update';" +
+      "document.getElementById('editQuizModal').classList.remove('hidden');" +
+      "}" +
+      "window.closeEditQuizModal=function(){" +
+      "document.getElementById('editQuizModal').classList.add('hidden');" +
+      "};" +
+      "document.addEventListener('DOMContentLoaded',function(){" +
+      "var modalEl=document.getElementById('editQuizModal');" +
+      "if(modalEl){" +
+      "modalEl.addEventListener('click',function(e){" +
+      "if(e.target.id==='editQuizModal'){window.closeEditQuizModal();}" +
+      "});" +
+      "}" +
+      "var deleteForms=document.querySelectorAll('.delete-quiz-form');" +
+      "deleteForms.forEach(function(form){" +
+      "form.addEventListener('submit',function(e){" +
+      "e.preventDefault();" +
+      "Swal.fire({" +
+      "title:'Hapus Quiz?'," +
+      "text:'Apakah Anda yakin ingin menghapus quiz ini?'," +
+      "icon:'warning'," +
+      "showCancelButton:true," +
+      "confirmButtonColor:'#ef4444'," +
+      "cancelButtonColor:'#64748b'," +
+      "confirmButtonText:'Ya, Hapus'," +
+      "cancelButtonText:'Batal'" +
+      "}).then(function(result){" +
+      "if(result.isConfirmed){form.submit();}" +
+      "});" +
+      "});" +
+      "});" +
+      "});" +
+      "</script>" +
+      "</body>" +
+      "</html>";
+
+    res.send(html);
+  });
+});
+
+// POST create quiz
+app.post("/quiz/create", requireAuth, function (req, res) {
+  var question = (req.body.question || "").trim();
+  var optionA = (req.body.option_a || "").trim();
+  var optionB = (req.body.option_b || "").trim();
+  var optionC = (req.body.option_c || "").trim();
+  var optionD = (req.body.option_d || "").trim();
+  var correctAnswer = (req.body.correct_answer || "").trim().toUpperCase();
+  var explanation = (req.body.explanation || "").trim();
+
+  if (
+    !question ||
+    !optionA ||
+    !optionB ||
+    !optionC ||
+    !optionD ||
+    !correctAnswer
+  ) {
+    return res.redirect(
+      "/quiz?quizError=" +
+        encodeURIComponent("Semua field wajib diisi kecuali penjelasan.")
+    );
+  }
+
+  if (!["A", "B", "C", "D"].includes(correctAnswer)) {
+    return res.redirect(
+      "/quiz?quizError=" +
+        encodeURIComponent("Jawaban benar harus A, B, C, atau D.")
+    );
+  }
+
+  db.createQuiz(
+    {
+      question: question,
+      option_a: optionA,
+      option_b: optionB,
+      option_c: optionC,
+      option_d: optionD,
+      correct_answer: correctAnswer,
+      explanation: explanation || null,
+    },
+    function (err) {
+      if (err) {
+        console.error("DB createQuiz error:", err);
+        return res.redirect(
+          "/quiz?quizError=" +
+            encodeURIComponent("Gagal menambah quiz. " + (err.message || ""))
+        );
+      }
+      res.redirect(
+        "/quiz?quizSuccess=" + encodeURIComponent("Quiz berhasil ditambahkan.")
+      );
+    }
+  );
+});
+
+// POST update quiz
+app.post("/quiz/:id/update", requireAuth, function (req, res) {
+  var id = parseInt(req.params.id);
+  var question = (req.body.question || "").trim();
+  var optionA = (req.body.option_a || "").trim();
+  var optionB = (req.body.option_b || "").trim();
+  var optionC = (req.body.option_c || "").trim();
+  var optionD = (req.body.option_d || "").trim();
+  var correctAnswer = (req.body.correct_answer || "").trim().toUpperCase();
+  var explanation = (req.body.explanation || "").trim();
+
+  if (
+    !question ||
+    !optionA ||
+    !optionB ||
+    !optionC ||
+    !optionD ||
+    !correctAnswer
+  ) {
+    return res.redirect(
+      "/quiz?quizError=" +
+        encodeURIComponent("Semua field wajib diisi kecuali penjelasan.")
+    );
+  }
+
+  if (!["A", "B", "C", "D"].includes(correctAnswer)) {
+    return res.redirect(
+      "/quiz?quizError=" +
+        encodeURIComponent("Jawaban benar harus A, B, C, atau D.")
+    );
+  }
+
+  db.updateQuiz(
+    id,
+    {
+      question: question,
+      option_a: optionA,
+      option_b: optionB,
+      option_c: optionC,
+      option_d: optionD,
+      correct_answer: correctAnswer,
+      explanation: explanation || null,
+    },
+    function (err) {
+      if (err) {
+        console.error("DB updateQuiz error:", err);
+        return res.redirect(
+          "/quiz?quizError=" +
+            encodeURIComponent("Gagal mengupdate quiz. " + (err.message || ""))
+        );
+      }
+      res.redirect(
+        "/quiz?quizSuccess=" + encodeURIComponent("Quiz berhasil diupdate.")
+      );
+    }
+  );
+});
+
+// POST delete quiz
+app.post("/quiz/:id/delete", requireAuth, function (req, res) {
+  var id = parseInt(req.params.id);
+  db.deleteQuiz(id, function (err) {
+    if (err) {
+      console.error("DB deleteQuiz error:", err);
+      return res.redirect(
+        "/quiz?quizError=" +
+          encodeURIComponent("Gagal menghapus quiz. " + (err.message || ""))
+      );
+    }
+    res.redirect(
+      "/quiz?quizSuccess=" + encodeURIComponent("Quiz berhasil dihapus.")
     );
   });
 });
