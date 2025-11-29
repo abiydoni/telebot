@@ -275,7 +275,7 @@ function startBot(selectedToken) {
       confirmText += "Apakah Anda ingin memulai quiz?\n\n";
       confirmText +=
         "Quiz akan menampilkan pertanyaan secara acak dan Anda akan mendapatkan skor berdasarkan jawaban yang benar.\n\n";
-      confirmText += "Pilih opsi di bawah untuk melanjutkan:";
+      confirmText += "Pilih: *Y* (Ya) atau *T* (Tidak)";
 
       // Pastikan msg.from.id ada
       if (!msg.from || !msg.from.id) {
@@ -292,11 +292,8 @@ function startBot(selectedToken) {
       var keyboard = {
         inline_keyboard: [
           [
-            {
-              text: "✅ Ya, Mulai Quiz",
-              callback_data: "quiz_start_" + userId,
-            },
-            { text: "❌ Tidak", callback_data: "quiz_cancel_" + userId },
+            { text: "Y", callback_data: "quiz_start_" + userId },
+            { text: "T", callback_data: "quiz_cancel_" + userId },
           ],
         ],
       };
