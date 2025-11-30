@@ -2223,10 +2223,7 @@ app.get("/quiz-scores", requireAuth, function (req, res) {
             s.user_username && s.user_username.trim() !== ""
               ? "@" + s.user_username
               : "";
-          var chatInfo =
-            s.chat_title && s.chat_title.trim() !== ""
-              ? s.chat_title
-              : s.chat_id || "-";
+          var chatId = s.chat_id || "-";
           var chatType =
             s.chat_type && s.chat_type.trim() !== "" ? s.chat_type : "-";
           var percentage = s.percentage
@@ -2247,8 +2244,8 @@ app.get("/quiz-scores", requireAuth, function (req, res) {
                 "</span>"
               : "") +
             "</td>" +
-            "<td class='px-3 py-2 text-xs text-slate-200'>" +
-            chatInfo +
+            "<td class='px-3 py-2 text-xs font-mono text-slate-300'>" +
+            chatId +
             "<br><span class='text-slate-400 text-[10px]'>" +
             chatType +
             "</span>" +
