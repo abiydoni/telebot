@@ -989,26 +989,91 @@ function startBot(selectedToken) {
     if (data && data.startsWith("quiz_start_")) {
       var callbackUserId = parseInt(data.split("_")[2]);
       if (callbackUserId === userId) {
-        // Jawab callback query
-        bot
-          .answerCallbackQuery(callbackQuery.id, {
-            text: "Quiz dimulai!",
-          })
-          .catch(function (e) {
-            console.error("Error answer callback:", e);
-          });
+        // Cek apakah chat_id sudah ada di tabel quiz scores sebelum memulai quiz
+        var chatId = String(msg.chat.id);
+        console.log(
+          "[Callback Quiz Start] Mengecek chat_id:",
+          chatId,
+          "user_id:",
+          userId
+        );
 
-        // Ambil data user dari callback query
-        var userData = {
-          userId: userId,
-          userName: callbackQuery.from.first_name || "",
-          userUsername: callbackQuery.from.username || "",
-          chatId: String(msg.chat.id),
-          chatType: msg.chat.type || "",
-          chatTitle: msg.chat.title || msg.chat.first_name || "",
-        };
-        // Mulai quiz dengan data user
-        startQuiz(msg.chat.id, userId, userData);
+        db.checkChatIdExistsInQuizScores(chatId, function (err, exists) {
+          if (err) {
+            console.error("[Callback Quiz Start] Error checking chat_id:", err);
+            // Jika error, jawab callback tapi jangan mulai quiz
+            bot
+              .answerCallbackQuery(callbackQuery.id, {
+                text: "Terjadi kesalahan. Silakan coba lagi.",
+                show_alert: true,
+              })
+              .catch(function (e) {
+                console.error("Error answer callback:", e);
+              });
+            return;
+          } else if (exists) {
+            // Chat ID sudah ada, kirim notifikasi dan batalkan quiz
+            console.log(
+              "[Callback Quiz Start] Chat ID",
+              chatId,
+              "sudah ada di quiz scores - Quiz dibatalkan"
+            );
+            bot
+              .answerCallbackQuery(callbackQuery.id, {
+                text: "Quiz sudah pernah dimainkan di chat ini!",
+                show_alert: true,
+              })
+              .catch(function (e) {
+                console.error("Error answer callback:", e);
+              });
+
+            var notificationText = "⚠️ *Quiz Dibatalkan*\n\n";
+            notificationText +=
+              "Anda sudah pernah mengikuti quiz di chat ini.\n\n";
+            notificationText += "Quiz tidak dapat dimulai lagi untuk chat ini.";
+
+            bot
+              .sendMessage(msg.chat.id, notificationText, {
+                parse_mode: "Markdown",
+              })
+              .catch(function (e) {
+                bot
+                  .sendMessage(msg.chat.id, notificationText.replace(/\*/g, ""))
+                  .catch(function (err) {
+                    console.error("Gagal kirim notifikasi quiz:", err);
+                  });
+              });
+            return; // Hentikan proses, jangan mulai quiz
+          } else {
+            // Chat ID belum ada, lanjutkan dengan memulai quiz
+            console.log(
+              "[Callback Quiz Start] Chat ID",
+              chatId,
+              "belum ada di quiz scores - Memulai quiz"
+            );
+
+            // Jawab callback query
+            bot
+              .answerCallbackQuery(callbackQuery.id, {
+                text: "Quiz dimulai!",
+              })
+              .catch(function (e) {
+                console.error("Error answer callback:", e);
+              });
+
+            // Ambil data user dari callback query
+            var userData = {
+              userId: userId,
+              userName: callbackQuery.from.first_name || "",
+              userUsername: callbackQuery.from.username || "",
+              chatId: String(msg.chat.id),
+              chatType: msg.chat.type || "",
+              chatTitle: msg.chat.title || msg.chat.first_name || "",
+            };
+            // Mulai quiz dengan data user
+            startQuiz(msg.chat.id, userId, userData);
+          }
+        });
       } else {
         bot
           .answerCallbackQuery(callbackQuery.id, {
