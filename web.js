@@ -273,7 +273,6 @@ app.get("/users", requireAuth, function (req, res) {
       "</div>" +
       "<div class='flex gap-2'>" +
       "<a href='/' class='inline-flex items-center rounded-xl border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:border-slate-500 transition'>← Kembali ke Dashboard</a>" +
-      "<a href='/bot-menu' class='inline-flex items-center rounded-xl border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:border-slate-500 transition'>📋 Bot Menu</a>" +
       "<form method='POST' action='/logout'>" +
       "<button type='submit' class='inline-flex items-center rounded-xl bg-slate-800 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700'>Logout</button>" +
       "</form>" +
@@ -1404,6 +1403,32 @@ app.get("/api/menus", requireAuthApi, function (req, res) {
   });
 });
 
+// ====== API untuk Quiz Scores ======
+
+// API endpoint untuk mengambil data quiz scores (JSON)
+app.get("/api/quiz-scores", requireAuthApi, function (req, res) {
+  db.allQuizScores(function (err, scores) {
+    if (err) {
+      console.error("DB allQuizScores API error:", err);
+      return res.status(500).json({ error: err.message || String(err) });
+    }
+    res.json(scores || []);
+  });
+});
+
+// ====== API untuk Quiz Scores ======
+
+// API endpoint untuk mengambil data quiz scores (JSON)
+app.get("/api/quiz-scores", requireAuthApi, function (req, res) {
+  db.allQuizScores(function (err, scores) {
+    if (err) {
+      console.error("DB allQuizScores API error:", err);
+      return res.status(500).json({ error: err.message || String(err) });
+    }
+    res.json(scores || []);
+  });
+});
+
 // ====== Halaman Bot Menu (CRUD) ======
 
 app.get("/bot-menu", requireAuth, function (req, res) {
@@ -1555,7 +1580,6 @@ app.get("/bot-menu", requireAuth, function (req, res) {
       "</div>" +
       "<div class='flex gap-2'>" +
       "<a href='/' class='inline-flex items-center rounded-xl border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:border-slate-500 transition'>← Kembali ke Dashboard</a>" +
-      "<a href='/bot-menu' class='inline-flex items-center rounded-xl border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:border-slate-500 transition'>📋 Bot Menu</a>" +
       "<form method='POST' action='/logout'>" +
       "<button type='submit' class='inline-flex items-center rounded-xl bg-slate-800 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700'>Logout</button>" +
       "</form>" +
@@ -1926,7 +1950,6 @@ app.get("/quiz", requireAuth, function (req, res) {
       "</div>" +
       "<div class='flex gap-2'>" +
       "<a href='/' class='inline-flex items-center rounded-xl border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:border-slate-500 transition'>← Kembali ke Dashboard</a>" +
-      "<a href='/bot-menu' class='inline-flex items-center rounded-xl border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:border-slate-500 transition'>📋 Bot Menu</a>" +
       "<form method='POST' action='/logout'>" +
       "<button type='submit' class='inline-flex items-center rounded-xl bg-slate-800 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700'>Logout</button>" +
       "</form>" +
@@ -2395,6 +2418,71 @@ app.get("/quiz-scores", requireAuth, function (req, res) {
       "});" +
       "});" +
       "}" +
+      "function renderScoresTable(scores){" +
+      "var tbody=document.getElementById('scores-table-body');" +
+      "if(!tbody)return;" +
+      "var hasScores=scores&&Array.isArray(scores)&&scores.length>0;" +
+      "if(!hasScores){" +
+      "tbody.innerHTML=\"<tr><td colspan='7' class='px-3 py-4 text-center text-slate-400 text-xs'>Belum ada data skor quiz.</td></tr>\";" +
+      "return;" +
+      "}" +
+      "tbody.innerHTML=scores.map(function(s){" +
+      "var userName=s.user_name&&s.user_name.trim()!==''?s.user_name:'Tidak ada nama';" +
+      "var userUsername=s.user_username&&s.user_username.trim()!==''?'@'+s.user_username:'';" +
+      "var chatId=s.chat_id||'-';" +
+      "var chatType=s.chat_type&&s.chat_type.trim()!==''?s.chat_type:'-';" +
+      "var percentage=s.percentage?parseFloat(s.percentage).toFixed(1)+'%':'0%';" +
+      "var playedAt=s.played_at||s.createdAt||'-';" +
+      'return"<tr>"+' +
+      "\"<td class='px-3 py-2 text-xs font-mono text-slate-300'>\"+(s.id||'')+\"</td>\"+" +
+      '"<td class=\'px-3 py-2 text-xs text-slate-200\'>"+userName+(userUsername?"<br><span class=\'text-slate-400 text-[10px]\'>"+userUsername+"</span>":\'\')+"</td>"+' +
+      '"<td class=\'px-3 py-2 text-xs font-mono text-slate-300\'>"+chatId+"<br><span class=\'text-slate-400 text-[10px]\'>"+chatType+"</span></td>"+' +
+      '"<td class=\'px-3 py-2 text-xs text-center\'><span class=\'text-emerald-400 font-semibold\'>"+(s.score||0)+"</span> / "+(s.total_questions||0)+"</td>"+' +
+      "\"<td class='px-3 py-2 text-xs text-center font-semibold'><span class='text-sky-400'>\"+percentage+\"</span></td>\"+" +
+      '"<td class=\'px-3 py-2 text-xs text-slate-400\'>"+playedAt+"</td>"+' +
+      "\"<td class='px-3 py-2 text-right text-xs space-x-1'>\"+" +
+      "\"<form method='POST' action='/quiz-scores/\"+s.id+\"/delete' style='display:inline' class='delete-score-form'>\"+" +
+      "\"<button type='submit' class='inline-flex items-center justify-center rounded-lg bg-rose-600 px-2 py-1 text-[11px] font-medium text-slate-50 hover:bg-rose-500' title='Hapus data'>🗑</button>\"+" +
+      '"</form></td></tr>";' +
+      "}).join('');" +
+      "var deleteForms=document.querySelectorAll('.delete-score-form');" +
+      "deleteForms.forEach(function(form){" +
+      "form.addEventListener('submit',function(e){" +
+      "e.preventDefault();" +
+      "var formAction=form.action;" +
+      "Swal.fire({" +
+      "title:'Hapus Data?'," +
+      "text:'Apakah Anda yakin ingin menghapus data skor ini?'," +
+      "icon:'warning'," +
+      "showCancelButton:true," +
+      "confirmButtonColor:'#ef4444'," +
+      "cancelButtonColor:'#64748b'," +
+      "confirmButtonText:'Ya, Hapus'," +
+      "cancelButtonText:'Batal'" +
+      "}).then(function(result){" +
+      "if(result.isConfirmed){" +
+      "var formData=new FormData();" +
+      "fetch(formAction,{method:'POST',body:formData})" +
+      ".then(function(){loadScores();})" +
+      ".catch(function(err){console.error('Error:',err);});" +
+      "}" +
+      "});" +
+      "});" +
+      "});" +
+      "var h2=document.querySelector('h2');" +
+      "if(h2&&h2.textContent.includes('Daftar Skor Quiz')){" +
+      "var totalCount=scores&&scores.length?scores.length:0;" +
+      "h2.innerHTML='Daftar Skor Quiz <span class=\"text-xs text-slate-400\">(Total: '+totalCount+')</span>';" +
+      "}" +
+      "}" +
+      "function loadScores(){" +
+      "fetch('/api/quiz-scores')" +
+      ".then(function(response){return response.json();})" +
+      ".then(function(scores){renderScoresTable(scores);})" +
+      ".catch(function(err){console.error('Error loading scores:',err);});" +
+      "}" +
+      "loadScores();" +
+      "setInterval(loadScores,3000);" +
       "});" +
       "</script>" +
       "</body>" +
