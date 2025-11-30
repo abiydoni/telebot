@@ -859,6 +859,27 @@ module.exports = {
       });
   },
 
+  // Cek apakah chat_id sudah ada di tabel quiz scores
+  checkChatIdExistsInQuizScores: function (chatId, cb) {
+    dbPromise
+      .then(function (state) {
+        var stmt = state.db.prepare(
+          "SELECT COUNT(*) as count FROM tb_quiz_scores WHERE chat_id = ?"
+        );
+        stmt.bind([String(chatId)]);
+        var count = 0;
+        if (stmt.step()) {
+          var r = stmt.get();
+          count = r[0] || 0;
+        }
+        stmt.free();
+        cb(null, count > 0);
+      })
+      .catch(function (err) {
+        cb(err);
+      });
+  },
+
   // Ambil semua skor quiz
   allQuizScores: function (cb) {
     dbPromise
