@@ -545,6 +545,18 @@ app.get("/", requireAuth, function (req, res) {
       '<div class="flex-shrink-0 text-slate-400 group-hover:text-purple-400 transition">→</div>' +
       "</div>" +
       "</a>" +
+      '<a href="/quiz-scores" class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg shadow-black/40 hover:bg-slate-900/80 hover:border-indigo-500/50 transition-all group">' +
+      '<div class="flex items-center gap-3">' +
+      '<div class="flex-shrink-0 w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center group-hover:bg-indigo-500/20 transition">' +
+      '<span class="text-2xl">📊</span>' +
+      "</div>" +
+      '<div class="flex-1 min-w-0">' +
+      '<h3 class="text-sm font-semibold text-slate-200 group-hover:text-indigo-300 transition">Data Skor Quiz</h3>' +
+      '<p class="text-xs text-slate-400 mt-0.5">Lihat dan kelola data skor</p>' +
+      "</div>" +
+      '<div class="flex-shrink-0 text-slate-400 group-hover:text-indigo-400 transition">→</div>' +
+      "</div>" +
+      "</a>" +
       "</section>" +
       // Tabel semua bot dari SQLite
       '<section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 shadow-lg shadow-black/40">' +
@@ -2179,6 +2191,247 @@ app.post("/quiz/:id/delete", requireAuth, function (req, res) {
     }
     res.redirect(
       "/quiz?quizSuccess=" + encodeURIComponent("Quiz berhasil dihapus.")
+    );
+  });
+});
+
+// ====== Halaman Quiz Scores (Lihat & Hapus Data) ======
+
+app.get("/quiz-scores", requireAuth, function (req, res) {
+  var baseUrl = getBaseUrl(req);
+  var scoreError = req.query.scoreError || null;
+  var scoreSuccess = req.query.scoreSuccess || null;
+
+  db.allQuizScores(function (err, scores) {
+    if (err) {
+      console.error("DB allQuizScores error:", err);
+      scores = [];
+      scoreError = scoreError || "Gagal memuat data skor quiz.";
+    }
+
+    var scoreRows = "";
+    var hasScores = scores && Array.isArray(scores) && scores.length > 0;
+
+    if (hasScores) {
+      scoreRows = scores
+        .map(function (s) {
+          var userName = s.user_name || "-";
+          var userUsername = s.user_username ? "@" + s.user_username : "-";
+          var chatInfo = s.chat_title || s.chat_id || "-";
+          var chatType = s.chat_type || "-";
+          var percentage = s.percentage
+            ? parseFloat(s.percentage).toFixed(1) + "%"
+            : "0%";
+          var playedAt = s.played_at || s.createdAt || "-";
+
+          return (
+            "<tr>" +
+            "<td class='px-3 py-2 text-xs font-mono text-slate-300'>" +
+            (s.id || "") +
+            "</td>" +
+            "<td class='px-3 py-2 text-xs text-slate-200'>" +
+            userName +
+            "<br><span class='text-slate-400 text-[10px]'>" +
+            userUsername +
+            "</span>" +
+            "</td>" +
+            "<td class='px-3 py-2 text-xs text-slate-200'>" +
+            chatInfo +
+            "<br><span class='text-slate-400 text-[10px]'>" +
+            chatType +
+            "</span>" +
+            "</td>" +
+            "<td class='px-3 py-2 text-xs font-mono text-slate-300'>" +
+            (s.chat_id || "-") +
+            "</td>" +
+            "<td class='px-3 py-2 text-xs text-center'>" +
+            "<span class='text-emerald-400 font-semibold'>" +
+            (s.score || 0) +
+            "</span> / " +
+            (s.total_questions || 0) +
+            "</td>" +
+            "<td class='px-3 py-2 text-xs text-center font-semibold'>" +
+            "<span class='text-sky-400'>" +
+            percentage +
+            "</span>" +
+            "</td>" +
+            "<td class='px-3 py-2 text-xs text-slate-400'>" +
+            playedAt +
+            "</td>" +
+            "<td class='px-3 py-2 text-right text-xs space-x-1'>" +
+            "<form method='POST' action='/quiz-scores/" +
+            s.id +
+            "/delete' style='display:inline' class='delete-score-form'>" +
+            "<button type='submit' class='inline-flex items-center justify-center rounded-lg bg-rose-600 px-2 py-1 text-[11px] font-medium text-slate-50 hover:bg-rose-500' title='Hapus data'>🗑</button>" +
+            "</form>" +
+            "</td>" +
+            "</tr>"
+          );
+        })
+        .join("");
+      if (!scoreRows || scoreRows.length === 0) {
+        scoreRows =
+          "<tr><td colspan='8' class='px-3 py-4 text-center text-rose-400 text-xs'>Error: Gagal render data</td></tr>";
+      }
+    } else {
+      scoreRows =
+        "<tr><td colspan='8' class='px-3 py-4 text-center text-slate-400 text-xs'>Belum ada data skor quiz.</td></tr>";
+    }
+
+    var html =
+      "<!DOCTYPE html>" +
+      "<html>" +
+      "<head>" +
+      '<meta charset="utf-8" />' +
+      "<title>Data Skor Quiz - Telegram Bot Manager</title>" +
+      '<script src="https://cdn.tailwindcss.com"></script>' +
+      '<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>' +
+      "</head>" +
+      '<body class="bg-slate-950 text-slate-100 min-h-screen">' +
+      '<div class="max-w-7xl mx-auto px-4 py-8 space-y-6">' +
+      '<header class="mb-4 flex items-center justify-between">' +
+      "<div>" +
+      '<h1 class="text-2xl font-semibold tracking-tight">📊 Data Skor Quiz</h1>' +
+      '<p class="text-slate-400 text-sm mt-1">Lihat dan kelola data skor quiz yang tersimpan.</p>' +
+      "</div>" +
+      "<div class='flex gap-2'>" +
+      "<a href='/' class='inline-flex items-center rounded-xl border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:border-slate-500 transition'>← Kembali ke Dashboard</a>" +
+      "<a href='/quiz' class='inline-flex items-center rounded-xl border border-slate-700 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:border-slate-500 transition'>🎯 Quiz</a>" +
+      "<form method='POST' action='/quiz-scores/delete-all' style='display:inline' class='delete-all-scores-form'>" +
+      "<button type='submit' class='inline-flex items-center rounded-xl bg-rose-600 px-3 py-1 text-xs font-medium text-slate-50 hover:bg-rose-500 transition'>🗑 Hapus Semua</button>" +
+      "</form>" +
+      "<form method='POST' action='/logout'>" +
+      "<button type='submit' class='inline-flex items-center rounded-xl bg-slate-800 px-3 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700'>Logout</button>" +
+      "</form>" +
+      "</div>" +
+      "</header>";
+
+    if (scoreError) {
+      html +=
+        '<div class="rounded-xl border border-rose-500/50 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">' +
+        scoreError +
+        "</div>";
+    }
+    if (scoreSuccess) {
+      html +=
+        '<div class="rounded-xl border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">' +
+        scoreSuccess +
+        "</div>";
+    }
+
+    html +=
+      '<section class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg shadow-black/40">' +
+      "<h2 class='text-sm font-semibold mb-3 text-slate-200'>Daftar Skor Quiz" +
+      (scores && scores.length > 0
+        ? " <span class='text-xs text-slate-400'>(Total: " +
+          scores.length +
+          ")</span>"
+        : "") +
+      "</h2>" +
+      '<div class="overflow-x-auto">' +
+      '<table class="min-w-full text-xs border-separate border-spacing-0">' +
+      '<thead><tr class="bg-slate-800/70">' +
+      '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70 rounded-tl-xl">ID</th>' +
+      '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">User</th>' +
+      '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Chat</th>' +
+      '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Chat ID</th>' +
+      '<th class="text-center px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Skor</th>' +
+      '<th class="text-center px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Persentase</th>' +
+      '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Waktu</th>' +
+      '<th class="text-right px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70 rounded-tr-xl">Aksi</th>' +
+      "</tr></thead>" +
+      "<tbody id='scores-table-body'>" +
+      scoreRows +
+      "</tbody>" +
+      "</table>" +
+      "</div>" +
+      "</section>" +
+      "</div>" +
+      "<script>" +
+      "document.addEventListener('DOMContentLoaded',function(){" +
+      "var deleteForms=document.querySelectorAll('.delete-score-form');" +
+      "deleteForms.forEach(function(form){" +
+      "form.addEventListener('submit',function(e){" +
+      "e.preventDefault();" +
+      "Swal.fire({" +
+      "title:'Hapus Data?'," +
+      "text:'Apakah Anda yakin ingin menghapus data skor ini?'," +
+      "icon:'warning'," +
+      "showCancelButton:true," +
+      "confirmButtonColor:'#ef4444'," +
+      "cancelButtonColor:'#64748b'," +
+      "confirmButtonText:'Ya, Hapus'," +
+      "cancelButtonText:'Batal'" +
+      "}).then(function(result){" +
+      "if(result.isConfirmed){form.submit();}" +
+      "});" +
+      "});" +
+      "});" +
+      "var deleteAllForm=document.querySelector('.delete-all-scores-form');" +
+      "if(deleteAllForm){" +
+      "deleteAllForm.addEventListener('submit',function(e){" +
+      "e.preventDefault();" +
+      "Swal.fire({" +
+      "title:'Hapus Semua Data?'," +
+      "text:'Apakah Anda yakin ingin menghapus SEMUA data skor quiz? Tindakan ini tidak dapat dibatalkan!'," +
+      "icon:'error'," +
+      "showCancelButton:true," +
+      "confirmButtonColor:'#ef4444'," +
+      "cancelButtonColor:'#64748b'," +
+      "confirmButtonText:'Ya, Hapus Semua'," +
+      "cancelButtonText:'Batal'," +
+      "input:'text'," +
+      "inputPlaceholder:'Ketik HAPUS untuk konfirmasi'," +
+      "inputValidator:function(value){" +
+      "if(value!=='HAPUS'){return 'Anda harus mengetik HAPUS untuk konfirmasi';}" +
+      "}" +
+      "}).then(function(result){" +
+      "if(result.isConfirmed&&result.value==='HAPUS'){deleteAllForm.submit();}" +
+      "});" +
+      "});" +
+      "}" +
+      "});" +
+      "</script>" +
+      "</body>" +
+      "</html>";
+
+    res.send(html);
+  });
+});
+
+// POST delete quiz score
+app.post("/quiz-scores/:id/delete", requireAuth, function (req, res) {
+  var id = parseInt(req.params.id);
+  db.deleteQuizScore(id, function (err) {
+    if (err) {
+      console.error("DB deleteQuizScore error:", err);
+      return res.redirect(
+        "/quiz-scores?scoreError=" +
+          encodeURIComponent("Gagal menghapus data. " + (err.message || ""))
+      );
+    }
+    res.redirect(
+      "/quiz-scores?scoreSuccess=" +
+        encodeURIComponent("Data berhasil dihapus.")
+    );
+  });
+});
+
+// POST delete all quiz scores
+app.post("/quiz-scores/delete-all", requireAuth, function (req, res) {
+  db.deleteAllQuizScores(function (err) {
+    if (err) {
+      console.error("DB deleteAllQuizScores error:", err);
+      return res.redirect(
+        "/quiz-scores?scoreError=" +
+          encodeURIComponent(
+            "Gagal menghapus semua data. " + (err.message || "")
+          )
+      );
+    }
+    res.redirect(
+      "/quiz-scores?scoreSuccess=" +
+        encodeURIComponent("Semua data berhasil dihapus.")
     );
   });
 });

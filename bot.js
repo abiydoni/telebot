@@ -17,13 +17,21 @@ var botProfile = null;
 var quizSessions = {};
 
 // Fungsi untuk memulai quiz
-function startQuiz(chatId, userId) {
+function startQuiz(chatId, userId, userData) {
   var sessionKey = chatId + "_" + userId;
   quizSessions[sessionKey] = {
     score: 0,
     totalQuestions: 0,
     currentQuestion: null,
     answeredQuestionIds: [], // Simpan ID soal yang sudah dijawab
+    userData: userData || {
+      userId: userId,
+      userName: "",
+      userUsername: "",
+      chatId: String(chatId),
+      chatType: "",
+      chatTitle: "",
+    },
   };
 
   db.getRandomQuiz(function (err, quiz) {
@@ -42,6 +50,17 @@ function startQuiz(chatId, userId) {
     quizSessions[sessionKey].currentQuestion = quiz;
     quizSessions[sessionKey].totalQuestions = 0;
     quizSessions[sessionKey].answeredQuestionIds = [];
+    // Pastikan userData sudah ada
+    if (!quizSessions[sessionKey].userData) {
+      quizSessions[sessionKey].userData = userData || {
+        userId: userId,
+        userName: "",
+        userUsername: "",
+        chatId: String(chatId),
+        chatType: "",
+        chatTitle: "",
+      };
+    }
 
     var questionText = "🎯 *QUIZ*\n\n";
     questionText += "*Pertanyaan:*\n" + quiz.question + "\n\n";
@@ -99,18 +118,17 @@ function handleQuizAnswer(chatId, userId, answer) {
   }
   session.totalQuestions++;
 
-  // Simpan skor ke database
-  db.saveQuizScore(
-    userId,
-    String(chatId),
-    session.score,
-    session.totalQuestions,
-    function (err) {
-      if (err) {
-        console.error("Error saving quiz score:", err);
-      }
-    }
-  );
+  // Simpan data user dan chat untuk disimpan ke database
+  if (!session.userData) {
+    session.userData = {
+      userId: userId,
+      userName: "",
+      userUsername: "",
+      chatId: String(chatId),
+      chatType: "",
+      chatTitle: "",
+    };
+  }
 
   // Langsung ambil soal berikutnya (tanpa penjelasan)
   session.currentQuestion = null;
@@ -121,20 +139,49 @@ function handleQuizAnswer(chatId, userId, answer) {
     function (err, nextQuiz) {
       if (err || !nextQuiz) {
         // Tidak ada soal aktif lagi, quiz selesai
+        var percentage =
+          session.totalQuestions > 0
+            ? ((session.score / session.totalQuestions) * 100).toFixed(1)
+            : 0;
+
         var finalText = "🎉 *Quiz Selesai!*\n\n";
         finalText +=
           "📊 *Skor akhir:* " +
           session.score +
           " / " +
           session.totalQuestions +
-          "\n\n";
-        finalText += "Ketik *6* atau *quiz* untuk memulai quiz baru.";
+          " (" +
+          percentage +
+          "%)\n\n";
 
-        bot
-          .sendMessage(chatId, finalText, { parse_mode: "Markdown" })
-          .catch(function (e) {
-            bot.sendMessage(chatId, finalText.replace(/\*/g, ""));
-          });
+        // Simpan skor ke database dengan data lengkap
+        db.saveQuizScore(
+          {
+            user_id: session.userData.userId,
+            user_name: session.userData.userName,
+            user_username: session.userData.userUsername,
+            chat_id: session.userData.chatId,
+            chat_type: session.userData.chatType,
+            chat_title: session.userData.chatTitle,
+            score: session.score,
+            total_questions: session.totalQuestions,
+          },
+          function (err) {
+            if (err) {
+              console.error("Error saving quiz score:", err);
+              finalText += "⚠️ Gagal menyimpan data skor.\n\n";
+            } else {
+              finalText += "✅ *Data sudah disimpan ke database.*\n\n";
+            }
+            finalText += "Ketik *6* atau *quiz* untuk memulai quiz baru.";
+
+            bot
+              .sendMessage(chatId, finalText, { parse_mode: "Markdown" })
+              .catch(function (e) {
+                bot.sendMessage(chatId, finalText.replace(/\*/g, ""));
+              });
+          }
+        );
 
         // Hapus session - quiz selesai, tidak bisa menjawab lagi
         delete quizSessions[sessionKey];
@@ -317,8 +364,16 @@ function startBot(selectedToken) {
     if (/^[YT]$/i.test(messageText)) {
       var userAnswer = messageText.toUpperCase();
       if (userAnswer === "Y") {
-        // User memilih Y, mulai quiz
-        startQuiz(msg.chat.id, msg.from.id);
+        // User memilih Y, mulai quiz dengan data user
+        var userData = {
+          userId: msg.from.id,
+          userName: msg.from.first_name || "",
+          userUsername: msg.from.username || "",
+          chatId: String(msg.chat.id),
+          chatType: msg.chat.type || "",
+          chatTitle: msg.chat.title || msg.chat.first_name || "",
+        };
+        startQuiz(msg.chat.id, msg.from.id, userData);
       } else if (userAnswer === "T") {
         // User memilih T, tampilkan notifikasi dan info menu
         var cancelText = "❌ Quiz dibatalkan.\n\n";
@@ -816,8 +871,17 @@ function startBot(selectedToken) {
             console.error("Error answer callback:", e);
           });
 
-        // Mulai quiz - langsung tampilkan pertanyaan
-        startQuiz(msg.chat.id, userId);
+        // Ambil data user dari callback query
+        var userData = {
+          userId: userId,
+          userName: callbackQuery.from.first_name || "",
+          userUsername: callbackQuery.from.username || "",
+          chatId: String(msg.chat.id),
+          chatType: msg.chat.type || "",
+          chatTitle: msg.chat.title || msg.chat.first_name || "",
+        };
+        // Mulai quiz dengan data user
+        startQuiz(msg.chat.id, userId, userData);
       } else {
         bot
           .answerCallbackQuery(callbackQuery.id, {
