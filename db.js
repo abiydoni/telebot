@@ -65,10 +65,18 @@ var dbPromise = initSqlJs().then(function (SQL) {
       "option_d TEXT NOT NULL," +
       "correct_answer TEXT NOT NULL," +
       "explanation TEXT," +
+      "status INTEGER DEFAULT 1," +
       "createdAt TEXT DEFAULT (datetime('now'))," +
       "updatedAt TEXT" +
       ")"
   );
+
+  // Update tabel yang sudah ada untuk menambahkan kolom status jika belum ada
+  try {
+    db.run("ALTER TABLE tb_quiz ADD COLUMN status INTEGER DEFAULT 1");
+  } catch (e) {
+    // Kolom sudah ada, skip
+  }
 
   // Tabel quiz_scores (untuk menyimpan skor user)
   db.run(
@@ -657,7 +665,7 @@ module.exports = {
     dbPromise
       .then(function (state) {
         var res = state.db.exec(
-          "SELECT id, question, option_a, option_b, option_c, option_d, correct_answer, explanation FROM tb_quiz ORDER BY id ASC"
+          "SELECT id, question, option_a, option_b, option_c, option_d, correct_answer, explanation, status FROM tb_quiz ORDER BY id ASC"
         );
         var rows =
           res[0] && res[0].values
@@ -671,6 +679,7 @@ module.exports = {
                   option_d: row[5],
                   correct_answer: row[6],
                   explanation: row[7] || "",
+                  status: row[8] !== null && row[8] !== undefined ? row[8] : 1,
                 };
               })
             : [];
@@ -681,12 +690,12 @@ module.exports = {
       });
   },
 
-  // Ambil quiz random
+  // Ambil quiz random yang aktif
   getRandomQuiz: function (cb) {
     dbPromise
       .then(function (state) {
         var res = state.db.exec(
-          "SELECT id, question, option_a, option_b, option_c, option_d, correct_answer, explanation FROM tb_quiz ORDER BY RANDOM() LIMIT 1"
+          "SELECT id, question, option_a, option_b, option_c, option_d, correct_answer, explanation, status FROM tb_quiz WHERE status = 1 ORDER BY RANDOM() LIMIT 1"
         );
         var row = null;
         if (res[0] && res[0].values && res[0].values[0]) {
@@ -700,6 +709,47 @@ module.exports = {
             option_d: r[5],
             correct_answer: r[6],
             explanation: r[7] || "",
+            status: r[8] || 1,
+          };
+        }
+        cb(null, row);
+      })
+      .catch(function (err) {
+        cb(err);
+      });
+  },
+
+  // Ambil quiz random yang belum pernah ditanyakan dalam session
+  getRandomQuizExcluding: function (excludeIds, cb) {
+    dbPromise
+      .then(function (state) {
+        var excludeClause = "";
+        if (excludeIds && excludeIds.length > 0) {
+          var ids = excludeIds
+            .map(function (id) {
+              return parseInt(id);
+            })
+            .join(",");
+          excludeClause = " AND id NOT IN (" + ids + ")";
+        }
+        var res = state.db.exec(
+          "SELECT id, question, option_a, option_b, option_c, option_d, correct_answer, explanation, status FROM tb_quiz WHERE status = 1" +
+            excludeClause +
+            " ORDER BY RANDOM() LIMIT 1"
+        );
+        var row = null;
+        if (res[0] && res[0].values && res[0].values[0]) {
+          var r = res[0].values[0];
+          row = {
+            id: r[0],
+            question: r[1],
+            option_a: r[2],
+            option_b: r[3],
+            option_c: r[4],
+            option_d: r[5],
+            correct_answer: r[6],
+            explanation: r[7] || "",
+            status: r[8] || 1,
           };
         }
         cb(null, row);
@@ -777,7 +827,7 @@ module.exports = {
     dbPromise
       .then(function (state) {
         state.db.run(
-          "INSERT INTO tb_quiz (question, option_a, option_b, option_c, option_d, correct_answer, explanation, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+          "INSERT INTO tb_quiz (question, option_a, option_b, option_c, option_d, correct_answer, explanation, status, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))",
           [
             data.question || null,
             data.option_a || null,
@@ -786,10 +836,11 @@ module.exports = {
             data.option_d || null,
             data.correct_answer || null,
             data.explanation || null,
+            data.status !== undefined && data.status !== null ? data.status : 1,
           ]
         );
         var res = state.db.exec(
-          "SELECT id, question, option_a, option_b, option_c, option_d, correct_answer, explanation FROM tb_quiz ORDER BY id DESC LIMIT 1"
+          "SELECT id, question, option_a, option_b, option_c, option_d, correct_answer, explanation, status FROM tb_quiz ORDER BY id DESC LIMIT 1"
         );
         var row = null;
         if (res[0] && res[0].values && res[0].values[0]) {
@@ -803,6 +854,7 @@ module.exports = {
             option_d: r[5],
             correct_answer: r[6],
             explanation: r[7] || "",
+            status: r[8] !== null && r[8] !== undefined ? r[8] : 1,
           };
         }
         persist(state);
@@ -818,7 +870,7 @@ module.exports = {
     dbPromise
       .then(function (state) {
         state.db.run(
-          "UPDATE tb_quiz SET question = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?, correct_answer = ?, explanation = ?, updatedAt = datetime('now') WHERE id = ?",
+          "UPDATE tb_quiz SET question = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?, correct_answer = ?, explanation = ?, status = ?, updatedAt = datetime('now') WHERE id = ?",
           [
             data.question || null,
             data.option_a || null,
@@ -827,11 +879,12 @@ module.exports = {
             data.option_d || null,
             data.correct_answer || null,
             data.explanation || null,
+            data.status !== undefined && data.status !== null ? data.status : 1,
             id,
           ]
         );
         var res = state.db.exec(
-          "SELECT id, question, option_a, option_b, option_c, option_d, correct_answer, explanation FROM tb_quiz WHERE id = " +
+          "SELECT id, question, option_a, option_b, option_c, option_d, correct_answer, explanation, status FROM tb_quiz WHERE id = " +
             id +
             " LIMIT 1"
         );
@@ -847,6 +900,7 @@ module.exports = {
             option_d: r[5],
             correct_answer: r[6],
             explanation: r[7] || "",
+            status: r[8] !== null && r[8] !== undefined ? r[8] : 1,
           };
         }
         persist(state);

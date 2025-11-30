@@ -1852,6 +1852,11 @@ app.get("/quiz", requireAuth, function (req, res) {
             "<td class='px-3 py-2 text-xs text-slate-400 max-w-xs truncate'>" +
             (q.explanation || "-") +
             "</td>" +
+            "<td class='px-3 py-2 text-xs text-center'>" +
+            (q.status === 1 || q.status === null
+              ? "<span class='text-emerald-400'>✓ Aktif</span>"
+              : "<span class='text-rose-400'>✗ Nonaktif</span>") +
+            "</td>" +
             "<td class='px-3 py-2 text-right text-xs space-x-1'>" +
             "<button type='button' class='inline-flex items-center justify-center rounded-lg bg-sky-600 px-2 py-1 text-[11px] font-medium text-slate-50 hover:bg-sky-500' title='Edit quiz' onclick='openEditQuizModal(" +
             q.id +
@@ -1869,6 +1874,8 @@ app.get("/quiz", requireAuth, function (req, res) {
             JSON.stringify(q.correct_answer || "") +
             ", " +
             JSON.stringify(q.explanation || "") +
+            ", " +
+            (q.status || 1) +
             ")'>&#9998;</button>" +
             "<form method='POST' action='/quiz/" +
             q.id +
@@ -1957,6 +1964,7 @@ app.get("/quiz", requireAuth, function (req, res) {
       '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Pilihan</th>' +
       '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Jawaban Benar</th>' +
       '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Penjelasan</th>' +
+      '<th class="text-center px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Status</th>' +
       '<th class="text-right px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70 rounded-tr-xl">Aksi</th>' +
       "</tr></thead>" +
       "<tbody id='quiz-table-body'>" +
@@ -1980,7 +1988,8 @@ app.get("/quiz", requireAuth, function (req, res) {
       '<div><label class="block text-slate-300 mb-1">Pilihan D</label><input id="editQuizOptionD" name="option_d" class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500" required /></div>' +
       "</div>" +
       '<div><label class="block text-slate-300 mb-1">Jawaban Benar</label><select id="editQuizCorrect" name="correct_answer" class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500" required><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select></div>' +
-      '<div><label class="block text-slate-300 mb-1">Penjelasan (opsional)</label><textarea id="editQuizExplanation" name="explanation" rows="2" class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"></textarea></div>' +
+      '<div><label class="block text-slate-300 mb-1">Status</label><select id="editQuizStatus" name="status" class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"><option value="1">Aktif</option><option value="0">Nonaktif</option></select></div>' +
+      '<div class="md:col-span-2"><label class="block text-slate-300 mb-1">Penjelasan (opsional)</label><textarea id="editQuizExplanation" name="explanation" rows="2" class="w-full rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-1 text-xs outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"></textarea></div>' +
       '<div class="flex gap-2 justify-end pt-2">' +
       '<button type="button" onclick="window.closeEditQuizModal()" class="px-3 py-1 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 text-xs">Batal</button>' +
       '<button type="submit" class="px-3 py-1 rounded-lg bg-sky-600 text-slate-50 hover:bg-sky-500 text-xs">Simpan</button>' +
@@ -1989,7 +1998,7 @@ app.get("/quiz", requireAuth, function (req, res) {
       "</div>" +
       "</div>" +
       "<script>" +
-      "function openEditQuizModal(id,question,optionA,optionB,optionC,optionD,correct,explanation){" +
+      "function openEditQuizModal(id,question,optionA,optionB,optionC,optionD,correct,explanation,status){" +
       "document.getElementById('editQuizId').value=id;" +
       "document.getElementById('editQuizQuestion').value=question;" +
       "document.getElementById('editQuizOptionA').value=optionA;" +
@@ -1998,6 +2007,7 @@ app.get("/quiz", requireAuth, function (req, res) {
       "document.getElementById('editQuizOptionD').value=optionD;" +
       "document.getElementById('editQuizCorrect').value=correct;" +
       "document.getElementById('editQuizExplanation').value=explanation||'';" +
+      "document.getElementById('editQuizStatus').value=status||1;" +
       "document.getElementById('editQuizForm').action='/quiz/'+id+'/update';" +
       "document.getElementById('editQuizModal').classList.remove('hidden');" +
       "}" +
@@ -2047,6 +2057,7 @@ app.post("/quiz/create", requireAuth, function (req, res) {
   var optionD = (req.body.option_d || "").trim();
   var correctAnswer = (req.body.correct_answer || "").trim().toUpperCase();
   var explanation = (req.body.explanation || "").trim();
+  var status = parseInt(req.body.status) || 1;
 
   if (
     !question ||
@@ -2078,6 +2089,7 @@ app.post("/quiz/create", requireAuth, function (req, res) {
       option_d: optionD,
       correct_answer: correctAnswer,
       explanation: explanation || null,
+      status: status,
     },
     function (err) {
       if (err) {
@@ -2104,6 +2116,7 @@ app.post("/quiz/:id/update", requireAuth, function (req, res) {
   var optionD = (req.body.option_d || "").trim();
   var correctAnswer = (req.body.correct_answer || "").trim().toUpperCase();
   var explanation = (req.body.explanation || "").trim();
+  var status = parseInt(req.body.status) || 1;
 
   if (
     !question ||
@@ -2136,6 +2149,7 @@ app.post("/quiz/:id/update", requireAuth, function (req, res) {
       option_d: optionD,
       correct_answer: correctAnswer,
       explanation: explanation || null,
+      status: status,
     },
     function (err) {
       if (err) {
