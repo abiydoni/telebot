@@ -385,16 +385,57 @@ function startBot(selectedToken) {
     if (/^[YT]$/i.test(messageText)) {
       var userAnswer = messageText.toUpperCase();
       if (userAnswer === "Y") {
-        // User memilih Y, mulai quiz dengan data user
-        var userData = {
-          userId: msg.from.id,
-          userName: msg.from.first_name || "",
-          userUsername: msg.from.username || "",
-          chatId: String(msg.chat.id),
-          chatType: msg.chat.type || "",
-          chatTitle: msg.chat.title || msg.chat.first_name || "",
-        };
-        startQuiz(msg.chat.id, msg.from.id, userData);
+        // User memilih Y, cek chat_id dulu sebelum memulai quiz
+        var chatId = String(msg.chat.id).trim();
+        console.log(
+          "[Text Y Handler] Mengecek chat_id:",
+          chatId,
+          "user_id:",
+          msg.from.id
+        );
+
+        db.checkChatIdExistsInQuizScores(chatId, function (err, exists) {
+          if (err) {
+            console.error("[Text Y Handler] Error checking chat_id:", err);
+            // Jika error, kirim notifikasi error
+            bot
+              .sendMessage(
+                msg.chat.id,
+                "❌ Terjadi kesalahan saat memulai quiz. Silakan coba lagi."
+              )
+              .catch(function (e) {
+                console.error("Gagal kirim error:", e);
+              });
+            return;
+          } else if (exists) {
+            // Chat ID sudah ada, kirim notifikasi dan batalkan quiz
+            console.log(
+              "[Text Y Handler] Chat ID",
+              chatId,
+              "sudah ada di quiz scores - Quiz dibatalkan"
+            );
+            sendQuizCancelledNotification(msg.chat.id);
+            return; // Hentikan proses, jangan mulai quiz
+          } else {
+            // Chat ID belum ada, lanjutkan dengan memulai quiz
+            console.log(
+              "[Text Y Handler] Chat ID",
+              chatId,
+              "belum ada di quiz scores - Memulai quiz"
+            );
+
+            // User memilih Y, mulai quiz dengan data user
+            var userData = {
+              userId: msg.from.id,
+              userName: msg.from.first_name || "",
+              userUsername: msg.from.username || "",
+              chatId: chatId,
+              chatType: msg.chat.type || "",
+              chatTitle: msg.chat.title || msg.chat.first_name || "",
+            };
+            startQuiz(msg.chat.id, msg.from.id, userData);
+          }
+        });
       } else if (userAnswer === "T") {
         // User memilih T, tampilkan notifikasi dan info menu
         var cancelText = "❌ Quiz dibatalkan.\n\n";
