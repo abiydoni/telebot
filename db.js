@@ -954,6 +954,66 @@ module.exports = {
               "[checkChatIdExistsInQuizScores] Ditemukan dengan LIKE query!"
             );
           }
+
+          // Coba query dengan TRIM untuk memastikan tidak ada whitespace
+          var trimStmt = state.db.prepare(
+            "SELECT COUNT(*) as count FROM tb_quiz_scores WHERE TRIM(chat_id) = ?"
+          );
+          trimStmt.bind([normalizedChatId]);
+          var trimCount = 0;
+          if (trimStmt.step()) {
+            var r4 = trimStmt.get();
+            trimCount = r4[0] || 0;
+          }
+          trimStmt.free();
+          console.log(
+            "[checkChatIdExistsInQuizScores] Hasil query dengan TRIM:",
+            trimCount
+          );
+
+          if (trimCount > 0) {
+            count = trimCount;
+            console.log(
+              "[checkChatIdExistsInQuizScores] Ditemukan dengan TRIM query!"
+            );
+          }
+
+          // Coba query dengan konversi ke string dan bandingkan
+          // Ini untuk menangani kasus chat_id disimpan sebagai number
+          var allStmt = state.db.prepare("SELECT chat_id FROM tb_quiz_scores");
+          var foundMatch = false;
+          while (allStmt.step() && !foundMatch) {
+            var row = allStmt.get();
+            var dbChatId = String(row[0] || "").trim();
+            var searchChatId = normalizedChatId;
+
+            // Bandingkan dengan berbagai format
+            if (
+              dbChatId === searchChatId ||
+              dbChatId === String(parseInt(searchChatId)) ||
+              String(parseInt(dbChatId)) === searchChatId ||
+              String(parseInt(dbChatId)) === String(parseInt(searchChatId))
+            ) {
+              foundMatch = true;
+              console.log(
+                "[checkChatIdExistsInQuizScores] Ditemukan dengan perbandingan manual!"
+              );
+              console.log(
+                "[checkChatIdExistsInQuizScores] dbChatId:",
+                dbChatId,
+                "searchChatId:",
+                searchChatId
+              );
+            }
+          }
+          allStmt.free();
+
+          if (foundMatch && count === 0) {
+            count = 1;
+            console.log(
+              "[checkChatIdExistsInQuizScores] Count diupdate menjadi 1 karena ditemukan dengan perbandingan manual"
+            );
+          }
         }
 
         console.log(

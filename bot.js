@@ -1112,8 +1112,48 @@ function startBot(selectedToken) {
               "[Callback Quiz Start] Memanggil startQuiz dengan chatId:",
               userData.chatId
             );
-            // Mulai quiz dengan data user
-            startQuiz(msg.chat.id, userId, userData);
+
+            // DOUBLE CHECK: Cek sekali lagi sebelum memulai quiz untuk memastikan
+            // (Ini untuk memastikan tidak ada race condition)
+            db.checkChatIdExistsInQuizScores(
+              userData.chatId,
+              function (err2, exists2) {
+                if (err2) {
+                  console.error(
+                    "[Callback Quiz Start] Error pada double check:",
+                    err2
+                  );
+                  // Jika error, lebih baik tidak mulai quiz
+                  bot
+                    .sendMessage(
+                      msg.chat.id,
+                      "❌ Terjadi kesalahan saat memulai quiz. Silakan coba lagi."
+                    )
+                    .catch(function (e) {
+                      console.error("Gagal kirim error:", e);
+                    });
+                  return;
+                } else if (exists2) {
+                  // Chat ID ternyata sudah ada (mungkin baru saja ditambahkan)
+                  console.log(
+                    "[Callback Quiz Start] DOUBLE CHECK: Chat ID",
+                    userData.chatId,
+                    "sudah ada - Quiz dibatalkan"
+                  );
+                  sendQuizCancelledNotification(msg.chat.id);
+                  return;
+                } else {
+                  // Chat ID benar-benar belum ada, mulai quiz
+                  console.log(
+                    "[Callback Quiz Start] DOUBLE CHECK: Chat ID",
+                    userData.chatId,
+                    "belum ada - Memulai quiz"
+                  );
+                  // Mulai quiz dengan data user
+                  startQuiz(msg.chat.id, userId, userData);
+                }
+              }
+            );
           }
         });
       } else {
