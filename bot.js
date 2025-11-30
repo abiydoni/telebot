@@ -99,12 +99,13 @@ function handleQuizAnswer(chatId, userId, answer) {
   }
   resultText += "\n";
   resultText +=
-    "📊 *Skor saat ini:* " +
+    "📊 *Skor akhir:* " +
     session.score +
     " / " +
     session.totalQuestions +
     "\n\n";
-  resultText += "Ketik *6* atau *quiz* untuk pertanyaan berikutnya";
+  resultText += "🎉 *Quiz selesai!*\n\n";
+  resultText += "Ketik *6* atau *quiz* untuk memulai quiz baru.";
 
   bot
     .sendMessage(chatId, resultText, { parse_mode: "Markdown" })
@@ -127,37 +128,10 @@ function handleQuizAnswer(chatId, userId, answer) {
     }
   );
 
-  // Reset current question dan ambil pertanyaan berikutnya
+  // Reset session - quiz selesai
   session.currentQuestion = null;
-
-  // Otomatis ambil pertanyaan berikutnya setelah 2 detik
-  setTimeout(function () {
-    db.getRandomQuiz(function (err, quiz) {
-      if (err || !quiz) {
-        return; // Tidak ada pertanyaan lagi
-      }
-
-      session.currentQuestion = quiz;
-      session.totalQuestions++;
-
-      var questionText = "🎯 *QUIZ - Pertanyaan Berikutnya*\n\n";
-      questionText += "*Pertanyaan:*\n" + quiz.question + "\n\n";
-      questionText += "*Pilihan Jawaban:*\n";
-      questionText += "A. " + quiz.option_a + "\n";
-      questionText += "B. " + quiz.option_b + "\n";
-      questionText += "C. " + quiz.option_c + "\n";
-      questionText += "D. " + quiz.option_d + "\n\n";
-      questionText += "Pilih jawaban dengan mengetik: *A*, *B*, *C*, atau *D*";
-
-      bot
-        .sendMessage(chatId, questionText, { parse_mode: "Markdown" })
-        .catch(function (e) {
-          bot.sendMessage(chatId, questionText).catch(function (err) {
-            console.error("Gagal kirim quiz berikutnya:", err);
-          });
-        });
-    });
-  }, 2000);
+  // Bisa juga hapus session jika ingin user harus mulai dari awal
+  // delete quizSessions[sessionKey];
 }
 
 // Fungsi untuk mendapatkan teks menu dari database
