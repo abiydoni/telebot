@@ -878,209 +878,84 @@ module.exports = {
           ")"
         );
 
-        // Query langsung: ambil semua chat_id dan bandingkan secara manual
-        // Ini lebih reliable daripada query dengan WHERE karena bisa handle berbagai format
-        var allStmt = state.db.prepare(
-          "SELECT chat_id FROM tb_quiz_scores"
-        );
+        // Gunakan query SQL yang efisien dengan beberapa variasi
+        var count = 0;
         var found = false;
-        var sampleChatIds = [];
-        var checkedCount = 0;
-        
-        while (allStmt.step()) {
-          checkedCount++;
-          var row = allStmt.get();
-          var dbChatId = String(row[0] || "").trim();
-          
-          // Simpan sample untuk debugging
-          if (sampleChatIds.length < 5) {
-            sampleChatIds.push({
-              value: dbChatId,
-              original: row[0],
-              type: typeof row[0],
-              length: dbChatId.length,
-            });
-          }
-          
-          // Bandingkan dengan berbagai format
-          if (
-            dbChatId === normalizedChatId ||
-            dbChatId === String(parseInt(normalizedChatId)) ||
-            String(parseInt(dbChatId)) === normalizedChatId ||
-            String(parseInt(dbChatId)) === String(parseInt(normalizedChatId))
-          ) {
-            found = true;
-            console.log(
-              "[checkChatIdExistsInQuizScores] MATCH DITEMUKAN!"
-            );
-            console.log(
-              "[checkChatIdExistsInQuizScores] dbChatId:",
-              dbChatId,
-              "normalizedChatId:",
-              normalizedChatId
-            );
-            break; // Sudah ditemukan, tidak perlu lanjutkan
-          }
-        }
-        allStmt.free();
-        
-        console.log(
-          "[checkChatIdExistsInQuizScores] Total record dicek:",
-          checkedCount
-        );
-        console.log(
-          "[checkChatIdExistsInQuizScores] Sample chat_id dari database:",
-          JSON.stringify(sampleChatIds, null, 2)
-        );
-        
-        // Jika tidak ditemukan dengan perbandingan manual, coba query SQL sebagai fallback
-        var count = found ? 1 : 0;
-        
-        if (!found) {
-          // Coba query SQL sebagai fallback
+
+        // 1. Coba exact match
+        try {
           var stmt = state.db.prepare(
             "SELECT COUNT(*) as count FROM tb_quiz_scores WHERE chat_id = ?"
           );
           stmt.bind([normalizedChatId]);
           if (stmt.step()) {
             var r = stmt.get();
-            var sqlCount = r[0] || 0;
-            if (sqlCount > 0) {
-              count = sqlCount;
+            count = r[0] || 0;
+            if (count > 0) {
               found = true;
               console.log(
-                "[checkChatIdExistsInQuizScores] Ditemukan dengan SQL query!"
+                "[checkChatIdExistsInQuizScores] Ditemukan dengan exact match!"
               );
             }
           }
           stmt.free();
-
-        // Jika tidak ditemukan dengan exact match, coba dengan CAST
-        if (count === 0) {
-          console.log(
-            "[checkChatIdExistsInQuizScores] Exact match tidak ditemukan, mencoba dengan CAST"
+        } catch (e) {
+          console.error(
+            "[checkChatIdExistsInQuizScores] Error exact match:",
+            e
           );
-          var stmt2 = state.db.prepare(
-            "SELECT COUNT(*) as count FROM tb_quiz_scores WHERE CAST(chat_id AS TEXT) = ?"
-          );
-          stmt2.bind([normalizedChatId]);
-          if (stmt2.step()) {
-            var r2 = stmt2.get();
-            count = r2[0] || 0;
-          }
-          stmt2.free();
         }
 
-        // Debug: ambil beberapa contoh chat_id dari database untuk debugging
-        if (count === 0) {
-          var debugStmt = state.db.prepare(
-            "SELECT chat_id FROM tb_quiz_scores LIMIT 10"
-          );
-          var sampleChatIds = [];
-          while (debugStmt.step()) {
-            var row = debugStmt.get();
-            var dbChatId = String(row[0] || "").trim();
-            sampleChatIds.push({
-              value: dbChatId,
-              original: row[0],
-              type: typeof row[0],
-              length: dbChatId.length,
-              matches: dbChatId === normalizedChatId,
-            });
-          }
-          debugStmt.free();
-          console.log(
-            "[checkChatIdExistsInQuizScores] Sample chat_id dari database:",
-            JSON.stringify(sampleChatIds, null, 2)
-          );
-          console.log(
-            "[checkChatIdExistsInQuizScores] Mencari:",
-            normalizedChatId,
-            "(length:",
-            normalizedChatId.length,
-            ")"
-          );
-
-          // Coba query dengan LIKE untuk memastikan
-          var likeStmt = state.db.prepare(
-            "SELECT COUNT(*) as count FROM tb_quiz_scores WHERE chat_id LIKE ?"
-          );
-          likeStmt.bind([normalizedChatId]);
-          var likeCount = 0;
-          if (likeStmt.step()) {
-            var r3 = likeStmt.get();
-            likeCount = r3[0] || 0;
-          }
-          likeStmt.free();
-          console.log(
-            "[checkChatIdExistsInQuizScores] Hasil query LIKE:",
-            likeCount
-          );
-
-          if (likeCount > 0) {
-            count = likeCount;
-            console.log(
-              "[checkChatIdExistsInQuizScores] Ditemukan dengan LIKE query!"
+        // 2. Jika tidak ditemukan, coba dengan TRIM
+        if (!found) {
+          try {
+            var trimStmt = state.db.prepare(
+              "SELECT COUNT(*) as count FROM tb_quiz_scores WHERE TRIM(chat_id) = ?"
             );
-          }
-
-          // Coba query dengan TRIM untuk memastikan tidak ada whitespace
-          var trimStmt = state.db.prepare(
-            "SELECT COUNT(*) as count FROM tb_quiz_scores WHERE TRIM(chat_id) = ?"
-          );
-          trimStmt.bind([normalizedChatId]);
-          var trimCount = 0;
-          if (trimStmt.step()) {
-            var r4 = trimStmt.get();
-            trimCount = r4[0] || 0;
-          }
-          trimStmt.free();
-          console.log(
-            "[checkChatIdExistsInQuizScores] Hasil query dengan TRIM:",
-            trimCount
-          );
-
-          if (trimCount > 0) {
-            count = trimCount;
-            console.log(
-              "[checkChatIdExistsInQuizScores] Ditemukan dengan TRIM query!"
-            );
-          }
-
-          // Coba query dengan konversi ke string dan bandingkan
-          // Ini untuk menangani kasus chat_id disimpan sebagai number
-          var allStmt = state.db.prepare("SELECT chat_id FROM tb_quiz_scores");
-          var foundMatch = false;
-          while (allStmt.step() && !foundMatch) {
-            var row = allStmt.get();
-            var dbChatId = String(row[0] || "").trim();
-            var searchChatId = normalizedChatId;
-
-            // Bandingkan dengan berbagai format
-            if (
-              dbChatId === searchChatId ||
-              dbChatId === String(parseInt(searchChatId)) ||
-              String(parseInt(dbChatId)) === searchChatId ||
-              String(parseInt(dbChatId)) === String(parseInt(searchChatId))
-            ) {
-              foundMatch = true;
-              console.log(
-                "[checkChatIdExistsInQuizScores] Ditemukan dengan perbandingan manual!"
-              );
-              console.log(
-                "[checkChatIdExistsInQuizScores] dbChatId:",
-                dbChatId,
-                "searchChatId:",
-                searchChatId
-              );
+            trimStmt.bind([normalizedChatId]);
+            if (trimStmt.step()) {
+              var r4 = trimStmt.get();
+              var trimCount = r4[0] || 0;
+              if (trimCount > 0) {
+                count = trimCount;
+                found = true;
+                console.log(
+                  "[checkChatIdExistsInQuizScores] Ditemukan dengan TRIM query!"
+                );
+              }
             }
+            trimStmt.free();
+          } catch (e) {
+            console.error(
+              "[checkChatIdExistsInQuizScores] Error TRIM query:",
+              e
+            );
           }
-          allStmt.free();
+        }
 
-          if (foundMatch && count === 0) {
-            count = 1;
-            console.log(
-              "[checkChatIdExistsInQuizScores] Count diupdate menjadi 1 karena ditemukan dengan perbandingan manual"
+        // 3. Jika masih tidak ditemukan, coba dengan CAST (untuk handle number vs string)
+        if (!found) {
+          try {
+            var castStmt = state.db.prepare(
+              "SELECT COUNT(*) as count FROM tb_quiz_scores WHERE CAST(chat_id AS TEXT) = ?"
+            );
+            castStmt.bind([normalizedChatId]);
+            if (castStmt.step()) {
+              var r2 = castStmt.get();
+              var castCount = r2[0] || 0;
+              if (castCount > 0) {
+                count = castCount;
+                found = true;
+                console.log(
+                  "[checkChatIdExistsInQuizScores] Ditemukan dengan CAST query!"
+                );
+              }
+            }
+            castStmt.free();
+          } catch (e) {
+            console.error(
+              "[checkChatIdExistsInQuizScores] Error CAST query:",
+              e
             );
           }
         }
