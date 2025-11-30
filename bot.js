@@ -136,8 +136,8 @@ function handleQuizAnswer(chatId, userId, answer) {
             bot.sendMessage(chatId, finalText.replace(/\*/g, ""));
           });
 
-        // Reset session
-        session.currentQuestion = null;
+        // Hapus session - quiz selesai, tidak bisa menjawab lagi
+        delete quizSessions[sessionKey];
         return;
       }
 
@@ -254,8 +254,63 @@ function startBot(selectedToken) {
 
     // Handler untuk jawaban quiz (A, B, C, D)
     if (/^[ABCD]$/i.test(messageText)) {
+      var sessionKey = msg.chat.id + "_" + msg.from.id;
+      var session = quizSessions[sessionKey];
+
+      // Cek apakah ada quiz aktif
+      if (!session || !session.currentQuestion) {
+        bot
+          .sendMessage(
+            msg.chat.id,
+            "❌ Tidak ada quiz aktif. Ketik *6* atau *quiz* untuk memulai quiz baru.",
+            { parse_mode: "Markdown" }
+          )
+          .catch(function (e) {
+            bot.sendMessage(
+              msg.chat.id,
+              "❌ Tidak ada quiz aktif. Ketik 6 atau quiz untuk memulai quiz baru."
+            );
+          });
+        return;
+      }
+
+      // Jika ada quiz aktif, proses jawaban
       handleQuizAnswer(msg.chat.id, msg.from.id, messageText);
       return;
+    }
+
+    // Handler untuk input selain A/B/C/D saat quiz aktif
+    // Cek dulu apakah ini bukan command lain (menu, 6, quiz, dll)
+    if (
+      messageTextLower !== "menu" &&
+      messageTextLower !== "/menu" &&
+      messageTextLower !== "/help" &&
+      messageTextLower !== "/start" &&
+      messageTextLower !== "/info" &&
+      messageText !== "6" &&
+      messageTextLower !== "quiz" &&
+      messageTextLower !== "y" &&
+      messageTextLower !== "t" &&
+      !/^\d{1,3}$/.test(messageText) &&
+      !messageText.startsWith("/")
+    ) {
+      var sessionKey = msg.chat.id + "_" + msg.from.id;
+      var session = quizSessions[sessionKey];
+      if (session && session.currentQuestion) {
+        // User sedang dalam quiz aktif tapi mengetik selain A/B/C/D
+        var warningText = "⚠️ *Peringatan*\n\n";
+        warningText +=
+          "Silakan jawab dengan mengetik: *A*, *B*, *C*, atau *D*\n\n";
+        warningText += "Pertanyaan saat ini:\n";
+        warningText += "*" + session.currentQuestion.question + "*";
+
+        bot
+          .sendMessage(msg.chat.id, warningText, { parse_mode: "Markdown" })
+          .catch(function (e) {
+            bot.sendMessage(msg.chat.id, warningText.replace(/\*/g, ""));
+          });
+        return;
+      }
     }
 
     // Handler untuk konfirmasi quiz (Y atau T) - jika user mengetik langsung
