@@ -16,6 +16,25 @@ var botProfile = null;
 // Simpan state quiz untuk setiap user
 var quizSessions = {};
 
+// Fungsi helper untuk mengirim notifikasi quiz dibatalkan
+function sendQuizCancelledNotification(chatId) {
+  var notificationText = "⚠️ *Quiz Dibatalkan*\n\n";
+  notificationText += "Anda sudah pernah mengikuti quiz di chat ini.\n\n";
+  notificationText += "Quiz tidak dapat dimulai lagi untuk chat ini.";
+
+  bot
+    .sendMessage(chatId, notificationText, {
+      parse_mode: "Markdown",
+    })
+    .catch(function (e) {
+      bot
+        .sendMessage(chatId, notificationText.replace(/\*/g, ""))
+        .catch(function (err) {
+          console.error("Gagal kirim notifikasi quiz:", err);
+        });
+    });
+}
+
 // Fungsi untuk memulai quiz
 function startQuiz(chatId, userId, userData) {
   var sessionKey = chatId + "_" + userId;
@@ -441,22 +460,8 @@ function startBot(selectedToken) {
             chatId,
             "sudah ada di quiz scores - Quiz dibatalkan"
           );
-          var notificationText = "⚠️ *Quiz Dibatalkan*\n\n";
-          notificationText +=
-            "Anda sudah pernah mengikuti quiz di chat ini.\n\n";
-          notificationText += "Quiz tidak dapat dimulai lagi untuk chat ini.";
-
-          bot
-            .sendMessage(msg.chat.id, notificationText, {
-              parse_mode: "Markdown",
-            })
-            .catch(function (e) {
-              bot
-                .sendMessage(msg.chat.id, notificationText.replace(/\*/g, ""))
-                .catch(function (err) {
-                  console.error("Gagal kirim notifikasi quiz:", err);
-                });
-            });
+          // Kirim notifikasi quiz dibatalkan
+          sendQuizCancelledNotification(msg.chat.id);
           return; // Hentikan proses, jangan lanjutkan quiz
         } else {
           // Chat ID belum ada, lanjutkan dengan konfirmasi quiz
@@ -1018,6 +1023,7 @@ function startBot(selectedToken) {
               chatId,
               "sudah ada di quiz scores - Quiz dibatalkan"
             );
+            // Jawab callback query dengan alert
             bot
               .answerCallbackQuery(callbackQuery.id, {
                 text: "Quiz sudah pernah dimainkan di chat ini!",
@@ -1027,22 +1033,8 @@ function startBot(selectedToken) {
                 console.error("Error answer callback:", e);
               });
 
-            var notificationText = "⚠️ *Quiz Dibatalkan*\n\n";
-            notificationText +=
-              "Anda sudah pernah mengikuti quiz di chat ini.\n\n";
-            notificationText += "Quiz tidak dapat dimulai lagi untuk chat ini.";
-
-            bot
-              .sendMessage(msg.chat.id, notificationText, {
-                parse_mode: "Markdown",
-              })
-              .catch(function (e) {
-                bot
-                  .sendMessage(msg.chat.id, notificationText.replace(/\*/g, ""))
-                  .catch(function (err) {
-                    console.error("Gagal kirim notifikasi quiz:", err);
-                  });
-              });
+            // Kirim notifikasi quiz dibatalkan (sama seperti ketika tekan angka 6)
+            sendQuizCancelledNotification(msg.chat.id);
             return; // Hentikan proses, jangan mulai quiz
           } else {
             // Chat ID belum ada, lanjutkan dengan memulai quiz
