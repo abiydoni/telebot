@@ -50,9 +50,11 @@ function startQuiz(chatId, userId, userData) {
     quizSessions[sessionKey].currentQuestion = quiz;
     quizSessions[sessionKey].totalQuestions = 0;
     quizSessions[sessionKey].answeredQuestionIds = [];
-    // Pastikan userData sudah ada
-    if (!quizSessions[sessionKey].userData) {
-      quizSessions[sessionKey].userData = userData || {
+    // Pastikan userData sudah ada dan terisi dengan benar
+    if (userData) {
+      quizSessions[sessionKey].userData = userData;
+    } else if (!quizSessions[sessionKey].userData) {
+      quizSessions[sessionKey].userData = {
         userId: userId,
         userName: "",
         userUsername: "",

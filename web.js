@@ -2215,10 +2215,20 @@ app.get("/quiz-scores", requireAuth, function (req, res) {
     if (hasScores) {
       scoreRows = scores
         .map(function (s) {
-          var userName = s.user_name || "-";
-          var userUsername = s.user_username ? "@" + s.user_username : "-";
-          var chatInfo = s.chat_title || s.chat_id || "-";
-          var chatType = s.chat_type || "-";
+          var userName =
+            s.user_name && s.user_name.trim() !== ""
+              ? s.user_name
+              : "Tidak ada nama";
+          var userUsername =
+            s.user_username && s.user_username.trim() !== ""
+              ? "@" + s.user_username
+              : "";
+          var chatInfo =
+            s.chat_title && s.chat_title.trim() !== ""
+              ? s.chat_title
+              : s.chat_id || "-";
+          var chatType =
+            s.chat_type && s.chat_type.trim() !== "" ? s.chat_type : "-";
           var percentage = s.percentage
             ? parseFloat(s.percentage).toFixed(1) + "%"
             : "0%";
@@ -2231,18 +2241,17 @@ app.get("/quiz-scores", requireAuth, function (req, res) {
             "</td>" +
             "<td class='px-3 py-2 text-xs text-slate-200'>" +
             userName +
-            "<br><span class='text-slate-400 text-[10px]'>" +
-            userUsername +
-            "</span>" +
+            (userUsername
+              ? "<br><span class='text-slate-400 text-[10px]'>" +
+                userUsername +
+                "</span>"
+              : "") +
             "</td>" +
             "<td class='px-3 py-2 text-xs text-slate-200'>" +
             chatInfo +
             "<br><span class='text-slate-400 text-[10px]'>" +
             chatType +
             "</span>" +
-            "</td>" +
-            "<td class='px-3 py-2 text-xs font-mono text-slate-300'>" +
-            (s.chat_id || "-") +
             "</td>" +
             "<td class='px-3 py-2 text-xs text-center'>" +
             "<span class='text-emerald-400 font-semibold'>" +
@@ -2271,11 +2280,11 @@ app.get("/quiz-scores", requireAuth, function (req, res) {
         .join("");
       if (!scoreRows || scoreRows.length === 0) {
         scoreRows =
-          "<tr><td colspan='8' class='px-3 py-4 text-center text-rose-400 text-xs'>Error: Gagal render data</td></tr>";
+          "<tr><td colspan='7' class='px-3 py-4 text-center text-rose-400 text-xs'>Error: Gagal render data</td></tr>";
       }
     } else {
       scoreRows =
-        "<tr><td colspan='8' class='px-3 py-4 text-center text-slate-400 text-xs'>Belum ada data skor quiz.</td></tr>";
+        "<tr><td colspan='7' class='px-3 py-4 text-center text-slate-400 text-xs'>Belum ada data skor quiz.</td></tr>";
     }
 
     var html =
@@ -2334,7 +2343,6 @@ app.get("/quiz-scores", requireAuth, function (req, res) {
       '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70 rounded-tl-xl">ID</th>' +
       '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">User</th>' +
       '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Chat</th>' +
-      '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Chat ID</th>' +
       '<th class="text-center px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Skor</th>' +
       '<th class="text-center px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Persentase</th>' +
       '<th class="text-left px-3 py-2 font-medium text-slate-200 border-b border-slate-700/70">Waktu</th>' +
