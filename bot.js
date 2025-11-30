@@ -406,13 +406,7 @@ function startBot(selectedToken) {
           });
       });
     } else if (messageText === "6" || messageText.toLowerCase() === "quiz") {
-      // Handler khusus untuk Quiz (menu 6) - konfirmasi dulu sebelum mulai
-      var confirmText = "🎯 *QUIZ*\n\n";
-      confirmText += "Apakah Anda ingin memulai quiz?\n\n";
-      confirmText +=
-        "Quiz akan menampilkan pertanyaan secara acak dan Anda akan mendapatkan skor berdasarkan jawaban yang benar.\n\n";
-      confirmText += "Pilih: *Y* (Ya) atau *T* (Tidak)";
-
+      // Handler khusus untuk Quiz (menu 6) - cek chat_id dulu sebelum konfirmasi
       // Pastikan msg.from.id ada
       if (!msg.from || !msg.from.id) {
         bot.sendMessage(
@@ -423,63 +417,123 @@ function startBot(selectedToken) {
       }
 
       var userId = String(msg.from.id);
+      var chatId = String(msg.chat.id);
 
-      // Buat inline keyboard dengan format yang benar
-      var keyboard = {
-        inline_keyboard: [
-          [
-            { text: "Y", callback_data: "quiz_start_" + userId },
-            { text: "T", callback_data: "quiz_cancel_" + userId },
-          ],
-        ],
-      };
-
-      console.log("Sending quiz confirmation to chat:", msg.chat.id);
-      console.log("User ID:", userId);
-      console.log("Keyboard:", JSON.stringify(keyboard));
-
-      // Kirim dengan reply_markup
-      var sendOptions = {
-        reply_markup: keyboard,
-        parse_mode: "Markdown",
-      };
-
-      bot
-        .sendMessage(msg.chat.id, confirmText, sendOptions)
-        .then(function (result) {
-          console.log(
-            "✅ Quiz confirmation sent! Message ID:",
-            result.message_id
+      // Cek apakah chat_id sudah ada di tabel quiz scores
+      console.log(
+        "[Quiz Handler] Mengecek chat_id untuk quiz:",
+        chatId,
+        "user_id:",
+        userId
+      );
+      db.checkChatIdExistsInQuizScores(chatId, function (err, exists) {
+        if (err) {
+          console.error(
+            "[Quiz Handler] Error checking chat_id in quiz scores:",
+            err
           );
+          // Jika error, lanjutkan saja (jangan block)
+          showQuizConfirmation();
+        } else if (exists) {
+          // Chat ID sudah ada, kirim notifikasi dan hentikan quiz
           console.log(
-            "Reply markup applied:",
-            result.reply_markup ? "Yes" : "No"
+            "[Quiz Handler] Chat ID",
+            chatId,
+            "sudah ada di quiz scores - Quiz dibatalkan"
           );
-        })
-        .catch(function (error) {
-          console.error("❌ Error:", error.message || error);
-
-          // Fallback tanpa Markdown
-          var fallbackOptions = {
-            reply_markup: keyboard,
-          };
+          var notificationText = "⚠️ *Quiz Dibatalkan*\n\n";
+          notificationText +=
+            "Anda sudah pernah mengikuti quiz di chat ini.\n\n";
+          notificationText += "Quiz tidak dapat dimulai lagi untuk chat ini.";
 
           bot
-            .sendMessage(
-              msg.chat.id,
-              confirmText.replace(/\*/g, ""),
-              fallbackOptions
-            )
-            .then(function (result) {
-              console.log(
-                "✅ Sent with fallback! Message ID:",
-                result.message_id
-              );
+            .sendMessage(msg.chat.id, notificationText, {
+              parse_mode: "Markdown",
             })
-            .catch(function (err) {
-              console.error("❌ Fallback also failed:", err.message || err);
+            .catch(function (e) {
+              bot
+                .sendMessage(msg.chat.id, notificationText.replace(/\*/g, ""))
+                .catch(function (err) {
+                  console.error("Gagal kirim notifikasi quiz:", err);
+                });
             });
-        });
+          return; // Hentikan proses, jangan lanjutkan quiz
+        } else {
+          // Chat ID belum ada, lanjutkan dengan konfirmasi quiz
+          console.log(
+            "[Quiz Handler] Chat ID",
+            chatId,
+            "belum ada di quiz scores - Menampilkan konfirmasi quiz"
+          );
+          showQuizConfirmation();
+        }
+      });
+
+      // Fungsi untuk menampilkan konfirmasi quiz
+      function showQuizConfirmation() {
+        var confirmText = "🎯 *QUIZ*\n\n";
+        confirmText += "Apakah Anda ingin memulai quiz?\n\n";
+        confirmText +=
+          "Quiz akan menampilkan pertanyaan secara acak dan Anda akan mendapatkan skor berdasarkan jawaban yang benar.\n\n";
+        confirmText += "Pilih: *Y* (Ya) atau *T* (Tidak)";
+
+        // Buat inline keyboard dengan format yang benar
+        var keyboard = {
+          inline_keyboard: [
+            [
+              { text: "Y", callback_data: "quiz_start_" + userId },
+              { text: "T", callback_data: "quiz_cancel_" + userId },
+            ],
+          ],
+        };
+
+        console.log("Sending quiz confirmation to chat:", msg.chat.id);
+        console.log("User ID:", userId);
+        console.log("Keyboard:", JSON.stringify(keyboard));
+
+        // Kirim dengan reply_markup
+        var sendOptions = {
+          reply_markup: keyboard,
+          parse_mode: "Markdown",
+        };
+
+        bot
+          .sendMessage(msg.chat.id, confirmText, sendOptions)
+          .then(function (result) {
+            console.log(
+              "✅ Quiz confirmation sent! Message ID:",
+              result.message_id
+            );
+            console.log(
+              "Reply markup applied:",
+              result.reply_markup ? "Yes" : "No"
+            );
+          })
+          .catch(function (error) {
+            console.error("❌ Error:", error.message || error);
+
+            // Fallback tanpa Markdown
+            var fallbackOptions = {
+              reply_markup: keyboard,
+            };
+
+            bot
+              .sendMessage(
+                msg.chat.id,
+                confirmText.replace(/\*/g, ""),
+                fallbackOptions
+              )
+              .then(function (result) {
+                console.log(
+                  "✅ Sent with fallback! Message ID:",
+                  result.message_id
+                );
+              })
+              .catch(function (err) {
+                console.error("❌ Fallback also failed:", err.message || err);
+              });
+          });
+      }
     } else if (/^\d{1,3}$/.test(messageText)) {
       // Handler untuk angka menu (1, 2, 31, dll)
       db.getMenuByKeyword(messageText, function (err, item) {

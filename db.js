@@ -801,7 +801,7 @@ module.exports = {
     dbPromise
       .then(function (state) {
         var userId = data.user_id;
-        var chatId = data.chat_id;
+        var chatId = String(data.chat_id || "").trim(); // Pastikan selalu String dan trim
         var score = data.score || 0;
         var totalQuestions = data.total_questions || 0;
         var percentage =
@@ -863,19 +863,76 @@ module.exports = {
   checkChatIdExistsInQuizScores: function (chatId, cb) {
     dbPromise
       .then(function (state) {
+        // Pastikan chatId adalah String dan trim whitespace
+        var normalizedChatId = String(chatId || "").trim();
+        console.log(
+          "[checkChatIdExistsInQuizScores] Mencari chat_id:",
+          normalizedChatId,
+          "(type:",
+          typeof normalizedChatId,
+          ")"
+        );
+
+        // Coba beberapa variasi query untuk memastikan menemukan data
+        // 1. Exact match dengan String
         var stmt = state.db.prepare(
           "SELECT COUNT(*) as count FROM tb_quiz_scores WHERE chat_id = ?"
         );
-        stmt.bind([String(chatId)]);
+        stmt.bind([normalizedChatId]);
         var count = 0;
         if (stmt.step()) {
           var r = stmt.get();
           count = r[0] || 0;
         }
         stmt.free();
+
+        // Jika tidak ditemukan dengan exact match, coba dengan CAST
+        if (count === 0) {
+          console.log(
+            "[checkChatIdExistsInQuizScores] Exact match tidak ditemukan, mencoba dengan CAST"
+          );
+          var stmt2 = state.db.prepare(
+            "SELECT COUNT(*) as count FROM tb_quiz_scores WHERE CAST(chat_id AS TEXT) = ?"
+          );
+          stmt2.bind([normalizedChatId]);
+          if (stmt2.step()) {
+            var r2 = stmt2.get();
+            count = r2[0] || 0;
+          }
+          stmt2.free();
+        }
+
+        // Debug: ambil beberapa contoh chat_id dari database untuk debugging
+        if (count === 0) {
+          var debugStmt = state.db.prepare(
+            "SELECT chat_id FROM tb_quiz_scores LIMIT 5"
+          );
+          var sampleChatIds = [];
+          while (debugStmt.step()) {
+            var row = debugStmt.get();
+            sampleChatIds.push({
+              value: row[0],
+              type: typeof row[0],
+              length: String(row[0]).length,
+            });
+          }
+          debugStmt.free();
+          console.log(
+            "[checkChatIdExistsInQuizScores] Sample chat_id dari database:",
+            JSON.stringify(sampleChatIds)
+          );
+        }
+
+        console.log(
+          "[checkChatIdExistsInQuizScores] Hasil: count =",
+          count,
+          ", exists =",
+          count > 0
+        );
         cb(null, count > 0);
       })
       .catch(function (err) {
+        console.error("[checkChatIdExistsInQuizScores] Error:", err);
         cb(err);
       });
   },
