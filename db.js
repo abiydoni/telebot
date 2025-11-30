@@ -905,29 +905,68 @@ module.exports = {
         // Debug: ambil beberapa contoh chat_id dari database untuk debugging
         if (count === 0) {
           var debugStmt = state.db.prepare(
-            "SELECT chat_id FROM tb_quiz_scores LIMIT 5"
+            "SELECT chat_id FROM tb_quiz_scores LIMIT 10"
           );
           var sampleChatIds = [];
           while (debugStmt.step()) {
             var row = debugStmt.get();
+            var dbChatId = String(row[0] || "").trim();
             sampleChatIds.push({
-              value: row[0],
+              value: dbChatId,
+              original: row[0],
               type: typeof row[0],
-              length: String(row[0]).length,
+              length: dbChatId.length,
+              matches: dbChatId === normalizedChatId,
             });
           }
           debugStmt.free();
           console.log(
             "[checkChatIdExistsInQuizScores] Sample chat_id dari database:",
-            JSON.stringify(sampleChatIds)
+            JSON.stringify(sampleChatIds, null, 2)
           );
+          console.log(
+            "[checkChatIdExistsInQuizScores] Mencari:",
+            normalizedChatId,
+            "(length:",
+            normalizedChatId.length,
+            ")"
+          );
+
+          // Coba query dengan LIKE untuk memastikan
+          var likeStmt = state.db.prepare(
+            "SELECT COUNT(*) as count FROM tb_quiz_scores WHERE chat_id LIKE ?"
+          );
+          likeStmt.bind([normalizedChatId]);
+          var likeCount = 0;
+          if (likeStmt.step()) {
+            var r3 = likeStmt.get();
+            likeCount = r3[0] || 0;
+          }
+          likeStmt.free();
+          console.log(
+            "[checkChatIdExistsInQuizScores] Hasil query LIKE:",
+            likeCount
+          );
+
+          if (likeCount > 0) {
+            count = likeCount;
+            console.log(
+              "[checkChatIdExistsInQuizScores] Ditemukan dengan LIKE query!"
+            );
+          }
         }
 
         console.log(
-          "[checkChatIdExistsInQuizScores] Hasil: count =",
+          "[checkChatIdExistsInQuizScores] ========================================"
+        );
+        console.log(
+          "[checkChatIdExistsInQuizScores] Hasil akhir: count =",
           count,
           ", exists =",
           count > 0
+        );
+        console.log(
+          "[checkChatIdExistsInQuizScores] ========================================"
         );
         cb(null, count > 0);
       })

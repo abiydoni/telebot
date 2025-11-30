@@ -425,7 +425,7 @@ function startBot(selectedToken) {
           });
       });
     } else if (messageText === "6" || messageText.toLowerCase() === "quiz") {
-      // Handler khusus untuk Quiz (menu 6) - cek chat_id dulu sebelum konfirmasi
+      // Handler khusus untuk Quiz (menu 6) - cek URL menu dulu, kalau ada "QUIZ" baru cek chat_id
       // Pastikan msg.from.id ada
       if (!msg.from || !msg.from.id) {
         bot.sendMessage(
@@ -438,37 +438,72 @@ function startBot(selectedToken) {
       var userId = String(msg.from.id);
       var chatId = String(msg.chat.id);
 
-      // Cek apakah chat_id sudah ada di tabel quiz scores
-      console.log(
-        "[Quiz Handler] Mengecek chat_id untuk quiz:",
-        chatId,
-        "user_id:",
-        userId
-      );
-      db.checkChatIdExistsInQuizScores(chatId, function (err, exists) {
-        if (err) {
-          console.error(
-            "[Quiz Handler] Error checking chat_id in quiz scores:",
-            err
-          );
-          // Jika error, lanjutkan saja (jangan block)
+      // Ambil menu dengan keyword "6" untuk cek URL
+      db.getMenuByKeyword("6", function (err, item) {
+        if (err || !item) {
+          console.error("[Quiz Handler] Error atau menu tidak ditemukan:", err);
+          // Jika menu tidak ditemukan, lanjutkan dengan konfirmasi quiz (fallback)
           showQuizConfirmation();
-        } else if (exists) {
-          // Chat ID sudah ada, kirim notifikasi dan hentikan quiz
+          return;
+        }
+
+        // Cek apakah URL menu mengandung kata "QUIZ" (case insensitive)
+        var hasQuizUrl = false;
+        if (
+          item.url &&
+          item.url.trim() !== "" &&
+          item.url !== "Masih dalam pengembangan"
+        ) {
+          var urlUpper = item.url.toUpperCase();
+          hasQuizUrl = urlUpper.includes("QUIZ");
           console.log(
-            "[Quiz Handler] Chat ID",
-            chatId,
-            "sudah ada di quiz scores - Quiz dibatalkan"
+            "[Quiz Handler] Menu keyword '6' - URL:",
+            item.url,
+            "Mengandung QUIZ:",
+            hasQuizUrl
           );
-          // Kirim notifikasi quiz dibatalkan
-          sendQuizCancelledNotification(msg.chat.id);
-          return; // Hentikan proses, jangan lanjutkan quiz
-        } else {
-          // Chat ID belum ada, lanjutkan dengan konfirmasi quiz
+        }
+
+        // Jika URL mengandung "QUIZ", cek chat_id dulu
+        if (hasQuizUrl) {
           console.log(
-            "[Quiz Handler] Chat ID",
+            "[Quiz Handler] URL mengandung QUIZ - Mengecek chat_id:",
             chatId,
-            "belum ada di quiz scores - Menampilkan konfirmasi quiz"
+            "user_id:",
+            userId
+          );
+          db.checkChatIdExistsInQuizScores(chatId, function (err, exists) {
+            if (err) {
+              console.error(
+                "[Quiz Handler] Error checking chat_id in quiz scores:",
+                err
+              );
+              // Jika error, lanjutkan saja (jangan block)
+              showQuizConfirmation();
+            } else if (exists) {
+              // Chat ID sudah ada, kirim notifikasi dan hentikan quiz
+              console.log(
+                "[Quiz Handler] Chat ID",
+                chatId,
+                "sudah ada di quiz scores - Quiz dibatalkan"
+              );
+              // Kirim notifikasi quiz dibatalkan
+              sendQuizCancelledNotification(msg.chat.id);
+              return; // Hentikan proses, jangan lanjutkan quiz
+            } else {
+              // Chat ID belum ada, lanjutkan dengan konfirmasi quiz
+              console.log(
+                "[Quiz Handler] Chat ID",
+                chatId,
+                "belum ada di quiz scores - Menampilkan konfirmasi quiz"
+              );
+              showQuizConfirmation();
+            }
+          });
+        } else {
+          // URL tidak mengandung "QUIZ", lanjutkan dengan konfirmasi quiz tanpa cek chat_id
+          console.log(
+            "[Quiz Handler] URL tidak mengandung QUIZ - Menampilkan konfirmasi quiz tanpa cek chat_id"
           );
           showQuizConfirmation();
         }
@@ -582,30 +617,12 @@ function startBot(selectedToken) {
               } else if (exists) {
                 // Chat ID sudah ada, kirim notifikasi dan hentikan quiz
                 console.log(
-                  "Chat ID",
+                  "[Menu Handler] Chat ID",
                   chatId,
                   "sudah ada di quiz scores - Quiz dibatalkan"
                 );
-                var notificationText = "⚠️ *Quiz Dibatalkan*\n\n";
-                notificationText +=
-                  "Anda sudah pernah mengikuti quiz di chat ini.\n\n";
-                notificationText +=
-                  "Quiz tidak dapat dimulai lagi untuk chat ini.";
-
-                bot
-                  .sendMessage(msg.chat.id, notificationText, {
-                    parse_mode: "Markdown",
-                  })
-                  .catch(function (e) {
-                    bot
-                      .sendMessage(
-                        msg.chat.id,
-                        notificationText.replace(/\*/g, "")
-                      )
-                      .catch(function (err) {
-                        console.error("Gagal kirim notifikasi quiz:", err);
-                      });
-                  });
+                // Gunakan fungsi helper yang sama untuk konsistensi
+                sendQuizCancelledNotification(msg.chat.id);
                 return; // Hentikan proses, jangan lanjutkan quiz
               } else {
                 // Chat ID belum ada, lanjutkan dengan quiz
@@ -995,15 +1012,34 @@ function startBot(selectedToken) {
       var callbackUserId = parseInt(data.split("_")[2]);
       if (callbackUserId === userId) {
         // Cek apakah chat_id sudah ada di tabel quiz scores sebelum memulai quiz
-        var chatId = String(msg.chat.id);
+        var chatId = String(msg.chat.id).trim();
+        console.log(
+          "[Callback Quiz Start] ========================================"
+        );
         console.log(
           "[Callback Quiz Start] Mengecek chat_id:",
           chatId,
-          "user_id:",
-          userId
+          "(type:",
+          typeof chatId,
+          ", length:",
+          chatId.length,
+          ")"
+        );
+        console.log(
+          "[Callback Quiz Start] user_id:",
+          userId,
+          "chat.id:",
+          msg.chat.id
         );
 
         db.checkChatIdExistsInQuizScores(chatId, function (err, exists) {
+          console.log(
+            "[Callback Quiz Start] Hasil pengecekan - err:",
+            err,
+            "exists:",
+            exists
+          );
+
           if (err) {
             console.error("[Callback Quiz Start] Error checking chat_id:", err);
             // Jika error, jawab callback tapi jangan mulai quiz
@@ -1035,13 +1071,22 @@ function startBot(selectedToken) {
 
             // Kirim notifikasi quiz dibatalkan (sama seperti ketika tekan angka 6)
             sendQuizCancelledNotification(msg.chat.id);
-            return; // Hentikan proses, jangan mulai quiz
+            console.log(
+              "[Callback Quiz Start] ========================================"
+            );
+            console.log(
+              "[Callback Quiz Start] QUIZ DIBATALKAN - Tidak akan memulai quiz"
+            );
+            return; // Hentikan proses, jangan mulai quiz - PENTING!
           } else {
             // Chat ID belum ada, lanjutkan dengan memulai quiz
             console.log(
               "[Callback Quiz Start] Chat ID",
               chatId,
               "belum ada di quiz scores - Memulai quiz"
+            );
+            console.log(
+              "[Callback Quiz Start] ========================================"
             );
 
             // Jawab callback query
@@ -1058,10 +1103,15 @@ function startBot(selectedToken) {
               userId: userId,
               userName: callbackQuery.from.first_name || "",
               userUsername: callbackQuery.from.username || "",
-              chatId: String(msg.chat.id),
+              chatId: String(msg.chat.id).trim(),
               chatType: msg.chat.type || "",
               chatTitle: msg.chat.title || msg.chat.first_name || "",
             };
+
+            console.log(
+              "[Callback Quiz Start] Memanggil startQuiz dengan chatId:",
+              userData.chatId
+            );
             // Mulai quiz dengan data user
             startQuiz(msg.chat.id, userId, userData);
           }
