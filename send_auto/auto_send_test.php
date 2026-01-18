@@ -111,7 +111,7 @@ if ($httpCode == 0) {
             try {
                 // Menggunakan NOW() untuk created_at dan updated_at
                 // Menggunakan NULL (bukan string 'NULL') untuk reply_to_id
-                $stmt = $pdo->prepare("INSERT INTO chats (sender_id, receiver_id, message, is_read, reply_to_id, created_at, updated_at) VALUES ('USER000', 'GROUP_ALL', :message, '0', NULL, NOW(), NOW())");
+                $stmt = $pdo->prepare("INSERT INTO chats (sender_id, receiver_id, message, is_read, reply_to_id, created_at, updated_at) VALUES ('USER000', 'USER037', :message, '0', NULL, NOW(), NOW())");
                 $executeResult = $stmt->execute([':message' => $message]);
                 if ($executeResult) {
                      echo "✅ Database: Data tersimpan di tabel chats (Last ID: " . $pdo->lastInsertId() . ")\n";
