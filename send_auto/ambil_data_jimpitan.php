@@ -2,7 +2,7 @@
 // Pastikan tidak ada output sebelum header
 ob_start();
 
-require 'db.php';
+require_once __DIR__ . '/db.php';
 date_default_timezone_set('Asia/Jakarta');
 
 // Terjemahan hari dan bulan ke Bahasa Indonesia
@@ -161,7 +161,7 @@ try {
 }
 
 // Cek apakah di-include atau diakses langsung
-$isIncluded = !isset($_SERVER['REQUEST_METHOD']);
+$isIncluded = (count(get_included_files()) > 1);
 
 if ($isIncluded) {
     // Jika di-include, jangan output, biarkan variabel $pesan tersedia

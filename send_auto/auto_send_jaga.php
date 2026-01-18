@@ -1,82 +1,140 @@
 <?php
 // Ambil konfigurasi dari database
-include 'get_konfigurasi.php';
+include __DIR__ . '/get_konfigurasi.php';
 
-$token = get_konfigurasi('session_id');
-$chatId = get_konfigurasi('group_id1');
-$gatewayBase = get_konfigurasi('url_group');
+$groupId = get_konfigurasi('group_id1');
+$gatewayBase = get_konfigurasi('api_url_group');
 $filePesan = get_konfigurasi('report2');
 
-// Ambil pesan dari file
+// Ambil pesan dari file jika ada
 $message = '';
 if (!empty($filePesan)) {
-    // Coba path relatif dulu
     if (!file_exists($filePesan)) {
-        // Coba path absolut
         $filePesan = __DIR__ . '/' . $filePesan;
     }
     if (file_exists($filePesan)) {
         include $filePesan;
-        // Ambil variabel $pesan yang sudah di-set oleh file
         $message = isset($pesan) ? trim((string)$pesan) : '';
     }
 }
 
-// Normalisasi chat_id
-$chatId = trim((string)$chatId);
-$chatId = is_numeric($chatId) ? (int)$chatId : $chatId;
+// Output hasil
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-// Bangun URL Telegram API
-$telegramApiBase = rtrim((string)$gatewayBase, '/');
-$url = "{$telegramApiBase}/bot{$token}/sendMessage";
+// Debug PDO connection
+if (!isset($pdo)) {
+    echo "⚠️  WARNING: Variable \$pdo tidak ditemukan!\n";
+} else {
+    echo "ℹ️  Info: Variable \$pdo tersedia.\n";
+}
+
+if (empty($message)) {
+    $message = 'Jadwal Jaga - ' . date('Y-m-d H:i:s');
+}
+
+// Validasi
+if (empty($groupId)) {
+    die("ERROR: Group ID kosong!\n");
+}
+if (empty($gatewayBase)) {
+    die("ERROR: URL gateway kosong!\n");
+}
+
+// Validasi URL
+// Bangun URL dengan logic sederhana sesuai original
+$gatewayBase = rtrim($gatewayBase, '/');
+
+// Jika belum ada endpoint, tambahkan /send-group-message (default original)
+// Kecuali user sudah set full path di DB
+if (strpos($gatewayBase, '/send-group-message') === false && strpos($gatewayBase, '.php') === false) {
+    if (strpos($gatewayBase, 'api.telegram.org') !== false) {
+         // Khusus warning jika config mengarah ke telegram tapi endpoint salah
+         echo "⚠️  WARNING: Config URL mengarah ke api.telegram.org. Pastikan ini benar untuk WA Gateway Anda.\n";
+    }
+    $gatewayUrl = $gatewayBase . '/send-group-message';
+} else {
+    $gatewayUrl = $gatewayBase;
+}
+
+echo "ℹ️  Info: Menggunakan URL Gateway: $gatewayUrl\n";
+
+// Payload data ORIGINAL (untuk WA Gateway / System sendiri)
 $data = [
-    'chat_id' => $chatId,
-    'text' => $message,
-    'parse_mode' => 'Markdown'
+    'id' => $groupId,      // Kembali ke 'id'
+    'message' => $message  // Kembali ke 'message'
 ];
 
-$ch = curl_init($url);
+$ch = curl_init($gatewayUrl);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
 curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
 
 $result = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $curlError = curl_error($ch);
+$curlErrno = curl_errno($ch);
 curl_close($ch);
 
-// Jika Markdown parse error, coba tanpa parse_mode
-if ($httpCode === 400 && $result) {
-    $error = json_decode($result, true);
-    if (isset($error['description']) && 
-        (stripos($error['description'], 'parse') !== false || 
-         stripos($error['description'], 'markdown') !== false)) {
-        // Coba kirim lagi tanpa parse_mode
-        $dataNoMarkdown = [
-            'chat_id' => $chatId,
-            'text' => $message
-        ];
-        
-        $ch2 = curl_init($url);
-        curl_setopt($ch2, CURLOPT_POST, true);
-        curl_setopt($ch2, CURLOPT_POSTFIELDS, json_encode($dataNoMarkdown));
-        curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch2, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch2, CURLOPT_TIMEOUT, 30);
-        
-        $result = curl_exec($ch2);
-        $httpCode = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch2);
-        curl_close($ch2);
-    }
-}
+// Output hasil
+echo "=== Hasil Pengiriman ===\n";
+echo "Group ID: $groupId\n";
+echo "URL Gateway: $gatewayUrl\n";
+echo "HTTP Code: $httpCode\n";
 
-// Log error jika gagal
-if ($httpCode != 200) {
-    $error = json_decode($result, true);
-    $errorMsg = isset($error['description']) ? $error['description'] : ($curlError ?: 'Unknown');
-    error_log("auto_send_jaga.php: Gagal kirim. HTTP: $httpCode, Error: $errorMsg, Chat ID: $chatId");
+if ($httpCode == 0) {
+    echo "❌ ERROR: Tidak bisa connect ke wagateway!\n";
+    echo "CURL Error: " . ($curlError ?: 'Connection failed') . "\n";
+    echo "CURL Errno: $curlErrno\n";
+} elseif ($httpCode == 404) {
+    echo "❌ ERROR: Endpoint tidak ditemukan (404)!\n";
+    echo "URL yang digunakan: $gatewayUrl\n";
+    echo "\nKemungkinan masalah:\n";
+    echo "1. URL di database salah atau endpoint tidak ada\n";
+    echo "2. Wagateway tidak running di server tersebut\n";
+    echo "3. Path endpoint berbeda (cek dokumentasi wagateway)\n";
+    echo "\nCoba cek:\n";
+    echo "- Base URL di database: " . get_konfigurasi('api_url_group') . "\n";
+    echo "- Pastikan wagateway running dan bisa diakses\n";
+} elseif ($httpCode == 200) {
+    $response = json_decode($result, true);
+    if (isset($response['status']) && $response['status']) {
+        echo "✅ SUCCESS: Pesan berhasil dikirim ke WhatsApp!\n";
+
+        // Input ke tabel chats
+        if (isset($pdo)) {
+            try {
+                // Menggunakan NOW() untuk created_at dan updated_at
+                // Menggunakan NULL (bukan string 'NULL') untuk reply_to_id
+                $stmt = $pdo->prepare("INSERT INTO chats (sender_id, receiver_id, message, is_read, reply_to_id, created_at, updated_at) VALUES ('USER000', 'GROUP_ALL', :message, '0', NULL, NOW(), NOW())");
+                $executeResult = $stmt->execute([':message' => $message]);
+                if ($executeResult) {
+                     echo "✅ Database: Data tersimpan di tabel chats (Last ID: " . $pdo->lastInsertId() . ")\n";
+                } else {
+                     echo "❌ Database: Gagal execute statement. Info: " . print_r($stmt->errorInfo(), true) . "\n";
+                }
+            } catch (Exception $e) {
+                echo "❌ Database Error (Insert Chats): " . $e->getMessage() . "\n";
+            }
+        } else {
+             echo "❌ Database Error: \$pdo variable is not set inside the success block.\n";
+        }
+
+    } else {
+        echo "⚠️  WARNING: HTTP 200 tapi status false\n";
+        echo "Response: " . substr($result, 0, 500) . "\n";
+    }
+} else {
+    $response = json_decode($result, true);
+    if ($response && isset($response['message'])) {
+        $errorMsg = is_array($response['message']) ? json_encode($response['message']) : $response['message'];
+        echo "❌ ERROR: $errorMsg\n";
+    } else {
+        echo "❌ ERROR: HTTP $httpCode\n";
+        echo "Response: " . substr($result, 0, 500) . "\n";
+    }
 }
 ?>
