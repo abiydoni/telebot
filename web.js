@@ -1390,6 +1390,38 @@ app.post("/dashboard/test", function (req, res) {
     });
 });
 
+// ====== API Custom untuk WA Gateway Compatibility ======
+// Endpoint khusus untuk menerima request dari PHP auto_send yang menggunakan format:
+// URL: /send-group-message
+// Body: { "id": "chat_id", "message": "text" }
+app.post("/send-group-message", function (req, res) {
+  var chatId = req.body.id; // Map 'id' ke chatId
+  var text = req.body.message; // Map 'message' ke text
+
+  if (!chatId || !text) {
+    return res.status(400).json({
+      status: false,
+      message: "Parameter 'id' dan 'message' wajib diisi.",
+    });
+  }
+
+  botModule.bot
+    .sendMessage(chatId, text)
+    .then(function () {
+      res.json({
+        status: true,
+        message: "Pesan berhasil dikirim.",
+      });
+    })
+    .catch(function (err) {
+      console.error("Gagal kirim pesan custom API:", err);
+      res.status(500).json({
+        status: false,
+        message: "Gagal mengirim pesan: " + (err.message || String(err)),
+      });
+    });
+});
+
 // ====== API untuk Bot Menu ======
 
 // API endpoint untuk test (opsional, untuk debugging)
