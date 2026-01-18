@@ -1,5 +1,5 @@
 <?php
-include 'db.php';
+include __DIR__ . '/db.php';
 
 function get_konfigurasi($nama) {
     global $pdo;

@@ -1,6 +1,6 @@
 <?php
 // Ambil konfigurasi dari database
-include 'get_konfigurasi.php';
+include __DIR__ . '/get_konfigurasi.php';
 
 $groupId = get_konfigurasi('group_id2'); //120363398680818900@g.us
 $gatewayBase = get_konfigurasi('api_url_group'); //https://telebot.appsbee.my.id/send-group-message
