@@ -79,7 +79,7 @@ try {
     $pesan .= "🌟 *Selamat melaksanakan tugas*\n";
     $pesan .= "🏡 " . escapeMarkdown("RT.07 RW.01") . "\n\n";
     $pesan .= "🕸️ *Link Scan:*\n";
-    $pesan .= "https://rt07.appsbee.my.id\n\n";
+    $pesan .= "https://jimpitan.appsbee.my.id\n\n";
     $pesan .= "⚠️ *PENTING - WAJIB SCAN QR*\n";
     $pesan .= "Dihimbau kepada petugas jimpitan:\n";
     $pesan .= "• *WAJIB SCAN QR CODE*\n";

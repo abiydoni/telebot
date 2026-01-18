@@ -136,9 +136,8 @@ try {
     $pesan .= "━━━━━━━━━━━━━━━━━━━━\n";
     $pesan .= "ℹ️ *Info Aplikasi:*\n";
     $pesan .= "Warga dapat mengakses aplikasi:\n";
-    $pesan .= "https://rt07.appsbee.my.id\n";
-    $pesan .= "👤 User: *warga*\n";
-    $pesan .= "🔑 Password: *warga*\n";
+    $pesan .= "https://jimpitan.appsbee.my.id\n";
+    $pesan .= "👤 Setiap KK memiliki 1 User dan 1 Password\n";
     $pesan .= "\n━━━━━━━━━━━━━━━━━━━━\n";
     $pesan .= "🌟 *Terima kasih atas perhatiannya*\n";
     $pesan .= "📞 Info lebih lanjut hubungi *ADMIN*\n";

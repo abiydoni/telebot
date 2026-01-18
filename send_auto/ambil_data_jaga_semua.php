@@ -73,7 +73,7 @@ try {
     $text .= "🌟 *Selamat bertugas*\n";
     $text .= "🏡 " . escapeMarkdown("RT.07 RW.01") . "\n\n";
     $text .= "🕸️ *Link Scan:*\n";
-    $text .= "https://rt07.appsbee.my.id\n";
+    $text .= "https://jimpitan.appsbee.my.id\n";
     $text .= "\n_Pesan Otomatis dari System_";
 
 } catch (PDOException $e) {
