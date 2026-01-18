@@ -101,5 +101,17 @@ if ($httpCode > 0) {
     echo "❌ Curl Failed: $err\n";
 }
 
+// 5. Cek Write Permissions
+echo "[5] Checking Write Permissions...\n";
+$logFile = __DIR__ . '/php_write_test.txt';
+if (file_put_contents($logFile, "Test write at " . date('Y-m-d H:i:s'))) {
+    echo "✅ PHP can write to: $logFile\n";
+    // Clean up
+    unlink($logFile);
+} else {
+    echo "❌ PHP CANNOT write to: " . __DIR__ . "\n";
+    echo "   Check folder permissions (chmod 755 or 777)\n";
+}
+
 echo "\n=== DIAGNOSTIC END ===\n";
 ?>
