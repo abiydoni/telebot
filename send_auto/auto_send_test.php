@@ -3,7 +3,7 @@
 include 'get_konfigurasi.php';
 
 $groupId = get_konfigurasi('group_id2'); //120363398680818900@g.us
-$gatewayBase = get_konfigurasi('url_group'); //https://telebot.appsbee.my.id/send-group-message
+$gatewayBase = get_konfigurasi('api_url_group'); //https://telebot.appsbee.my.id/send-group-message
 $filePesan = get_konfigurasi('report3'); //ambil_data_ultah.php
 
 // Ambil pesan dari file jika ada
@@ -41,16 +41,28 @@ if (empty($gatewayBase)) {
     die("ERROR: URL gateway kosong!\n");
 }
 
-// Bangun URL - jika sudah ada endpoint, jangan tambahkan lagi
+// Validasi URL
+// Bangun URL dengan logic sederhana sesuai original
 $gatewayBase = rtrim($gatewayBase, '/');
-if (strpos($gatewayBase, '/send-group-message') === false) {
+
+// Jika belum ada endpoint, tambahkan /send-group-message (default original)
+// Kecuali user sudah set full path di DB
+if (strpos($gatewayBase, '/send-group-message') === false && strpos($gatewayBase, '.php') === false) {
+    if (strpos($gatewayBase, 'api.telegram.org') !== false) {
+         // Khusus warning jika config mengarah ke telegram tapi endpoint salah
+         echo "⚠️  WARNING: Config URL mengarah ke api.telegram.org. Pastikan ini benar untuk WA Gateway Anda.\n";
+    }
     $gatewayUrl = $gatewayBase . '/send-group-message';
 } else {
     $gatewayUrl = $gatewayBase;
 }
+
+echo "ℹ️  Info: Menggunakan URL Gateway: $gatewayUrl\n";
+
+// Payload data ORIGINAL (untuk WA Gateway / System sendiri)
 $data = [
-    'id' => $groupId,
-    'message' => $message
+    'id' => $groupId,      // Kembali ke 'id'
+    'message' => $message  // Kembali ke 'message'
 ];
 
 $ch = curl_init($gatewayUrl);
