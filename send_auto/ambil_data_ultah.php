@@ -2,7 +2,7 @@
 // Pastikan tidak ada output sebelum header
 ob_start();
 
-require 'db.php';
+require_once __DIR__ . '/db.php';
 date_default_timezone_set('Asia/Jakarta');
 
 // Array bulan Indonesia
