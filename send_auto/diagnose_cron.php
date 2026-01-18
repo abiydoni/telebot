@@ -81,11 +81,14 @@ if (strpos($testUrl, 'api.telegram.org') === false && strpos($testUrl, '.php') =
     $testUrl .= '/send-group-message';
 }
 
-echo "Testing URL: $testUrl\n";
+echo "Testing URL: $testUrl (METHOD: POST)\n";
 $ch = curl_init($testUrl);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_TIMEOUT, 10);
 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['id' => '120363398680818900@g.us', 'message' => 'Test from Diagnose Cron']));
+curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
 // Verif SSL false dulu untuk testing internal
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
@@ -93,10 +96,20 @@ curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
 $res = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $err = curl_error($ch);
+$info = curl_getinfo($ch); // Ambil info detail (IP, etc)
 curl_close($ch);
 
+echo "Connected to IP: " . $info['primary_ip'] . "\n";
+echo "Content Type: " . $info['content_type'] . "\n";
+
 if ($httpCode > 0) {
-    echo "✅ Curl Success (HTTP $httpCode)\n";
+    if ($httpCode == 200) {
+        echo "✅ Curl Success (HTTP 200)\n";
+        echo "Response Body: " . substr($res, 0, 100) . "...\n";
+    } else {
+        echo "❌ Curl Failed (HTTP $httpCode)\n";
+        echo "Response Body: " . substr($res, 0, 200) . "\n";
+    }
 } else {
     echo "❌ Curl Failed: $err\n";
 }
