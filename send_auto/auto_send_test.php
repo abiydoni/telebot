@@ -18,7 +18,17 @@ if (!empty($filePesan)) {
     }
 }
 
-// Jika pesan kosong, gunakan pesan default
+// Output hasil
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Debug PDO connection
+if (!isset($pdo)) {
+    echo "⚠️  WARNING: Variable \$pdo tidak ditemukan!\n";
+} else {
+    echo "ℹ️  Info: Variable \$pdo tersedia.\n";
+}
+
 if (empty($message)) {
     $message = 'Test pesan - ' . date('Y-m-d H:i:s');
 }
@@ -85,12 +95,20 @@ if ($httpCode == 0) {
         echo "✅ SUCCESS: Pesan berhasil dikirim ke WhatsApp!\n";
 
         // Input ke tabel chats
-        try {
-            $stmt = $pdo->prepare("INSERT INTO chats (sender_id, receiver_id, message, is_read, reply_to_id) VALUES ('USER000', 'GROUP_ALL', :message, '0', 'NULL')");
-            $stmt->execute([':message' => $message]);
-            echo "✅ Database: Data tersimpan di tabel chats\n";
-        } catch (Exception $e) {
-            echo "❌ Database Error (Insert Chats): " . $e->getMessage() . "\n";
+        if (isset($pdo)) {
+            try {
+                $stmt = $pdo->prepare("INSERT INTO chats (sender_id, receiver_id, message, is_read, reply_to_id) VALUES ('USER000', 'GROUP_ALL', :message, '0', 'NULL')");
+                $executeResult = $stmt->execute([':message' => $message]);
+                if ($executeResult) {
+                     echo "✅ Database: Data tersimpan di tabel chats (Last ID: " . $pdo->lastInsertId() . ")\n";
+                } else {
+                     echo "❌ Database: Gagal execute statement. Info: " . print_r($stmt->errorInfo(), true) . "\n";
+                }
+            } catch (Exception $e) {
+                echo "❌ Database Error (Insert Chats): " . $e->getMessage() . "\n";
+            }
+        } else {
+             echo "❌ Database Error: \$pdo variable is not set inside the success block.\n";
         }
 
     } else {
