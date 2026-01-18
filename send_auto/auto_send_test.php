@@ -2,7 +2,7 @@
 // Ambil konfigurasi dari database
 include 'get_konfigurasi.php';
 
-$groupId = get_konfigurasi('group_id2'); //120363398680818900@g.us
+$groupId = get_konfigurasi('group_id1'); //120363398680818900@g.us
 $gatewayBase = get_konfigurasi('api_url_group'); //https://telebot.appsbee.my.id/send-group-message
 $filePesan = get_konfigurasi('report3'); //ambil_data_ultah.php
 
