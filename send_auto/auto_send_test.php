@@ -110,7 +110,7 @@ if ($httpCode == 0) {
         // Alih-alih input database manual, kita panggil API Jimpitan
         // agar notifikasi FCM langsung terkirim secara instan.
         
-        $jimpitanApiUrl = "https://jimpitan.appsbee.my.id/index.php/chat/system-send";
+        $jimpitanApiUrl = "https://jimpitan.appsbee.my.id/chat/system-send";
         $jimpitanApiKey = "jimpitan_secret_batch_2024";
 
         $jimpitanData = [
