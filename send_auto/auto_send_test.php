@@ -115,7 +115,7 @@ if ($httpCode == 0) {
 
         $jimpitanData = [
             'key'           => $jimpitanApiKey,
-            'receiver_id'   => 'USER037', // Kirim ke Forum Warga
+            'receiver_id'   => 'GROUP_ALL', // Kirim ke Forum Warga
             'message'       => $message,
             'sender_id'     => 'SYSTEM',
             'sender_name'   => 'System Alert'
