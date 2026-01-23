@@ -104,23 +104,35 @@ if ($httpCode == 0) {
     if (isset($response['status']) && $response['status']) {
         echo "✅ SUCCESS: Pesan berhasil dikirim ke WhatsApp!\n";
 
-        // Input ke tabel chats
-        if (isset($pdo)) {
-            try {
-                // Menggunakan NOW() untuk created_at dan updated_at
-                // Menggunakan NULL (bukan string 'NULL') untuk reply_to_id
-                $stmt = $pdo->prepare("INSERT INTO chats (sender_id, receiver_id, message, is_read, reply_to_id, created_at, updated_at) VALUES ('USER000', 'GROUP_ALL', :message, '0', NULL, NOW(), NOW())");
-                $executeResult = $stmt->execute([':message' => $message]);
-                if ($executeResult) {
-                     echo "✅ Database: Data tersimpan di tabel chats (Last ID: " . $pdo->lastInsertId() . ")\n";
-                } else {
-                     echo "❌ Database: Gagal execute statement. Info: " . print_r($stmt->errorInfo(), true) . "\n";
-                }
-            } catch (Exception $e) {
-                echo "❌ Database Error (Insert Chats): " . $e->getMessage() . "\n";
-            }
+        // --- REALTIME NOTIFICATION ---
+        // Alih-alih input database manual, kita panggil API Jimpitan
+        // agar notifikasi FCM langsung terkirim secara instan.
+        
+        $jimpitanApiUrl = "https://jimpitan.appsbee.my.id/index.php/chat/system-send";
+        $jimpitanApiKey = "jimpitan_secret_batch_2024";
+
+        $jimpitanData = [
+            'key'           => $jimpitanApiKey,
+            'receiver_id'   => 'GROUP_ALL', // Kirim ke Forum Warga
+            'message'       => $message,
+            'sender_id'     => 'SYSTEM',
+            'sender_name'   => 'System Alert'
+        ];
+
+        $chJ = curl_init($jimpitanApiUrl);
+        curl_setopt($chJ, CURLOPT_POST, true);
+        curl_setopt($chJ, CURLOPT_POSTFIELDS, $jimpitanData);
+        curl_setopt($chJ, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($chJ, CURLOPT_TIMEOUT, 10);
+        
+        $jResult = curl_exec($chJ);
+        $jHttpCode = curl_getinfo($chJ, CURLINFO_HTTP_CODE);
+        curl_close($chJ);
+
+        if ($jHttpCode == 200) {
+             echo "✅ Jimpitan: Pesan diteruskan ke aplikasi & Notifikasi dipicu (Realtime)!\n";
         } else {
-             echo "❌ Database Error: \$pdo variable is not set inside the success block.\n";
+             echo "❌ Jimpitan: Gagal panggil API. HTTP: $jHttpCode, Response: $jResult\n";
         }
 
     } else {
