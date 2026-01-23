@@ -127,12 +127,16 @@ if ($httpCode == 0) {
         
         $jResult = curl_exec($chJ);
         $jHttpCode = curl_getinfo($chJ, CURLINFO_HTTP_CODE);
+        $jCurlError = curl_error($chJ);
+        $jCurlErrno = curl_errno($chJ);
         curl_close($chJ);
 
         if ($jHttpCode == 200) {
              echo "✅ Jimpitan: Pesan diteruskan ke aplikasi & Notifikasi dipicu (Realtime)!\n";
         } else {
-             echo "❌ Jimpitan: Gagal panggil API. HTTP: $jHttpCode, Response: $jResult\n";
+             echo "❌ Jimpitan: Gagal panggil API. HTTP: $jHttpCode\n";
+             echo "CURL Error: " . ($jCurlError ?: 'Connection failed') . " (Code: $jCurlErrno)\n";
+             echo "Response: " . substr((string)$jResult, 0, 500) . "\n";
         }
 
     } else {
