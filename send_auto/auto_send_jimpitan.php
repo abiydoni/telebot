@@ -123,7 +123,8 @@ if ($httpCode == 0) {
         curl_setopt($chJ, CURLOPT_POST, true);
         curl_setopt($chJ, CURLOPT_POSTFIELDS, $jimpitanData);
         curl_setopt($chJ, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($chJ, CURLOPT_TIMEOUT, 10);
+        curl_setopt($chJ, CURLOPT_TIMEOUT, 30);
+        curl_setopt($chJ, CURLOPT_CONNECTTIMEOUT, 10);
         
         $jResult = curl_exec($chJ);
         $jHttpCode = curl_getinfo($chJ, CURLINFO_HTTP_CODE);
