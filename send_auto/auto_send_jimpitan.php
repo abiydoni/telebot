@@ -65,19 +65,41 @@ $data = [
     'message' => $message  // Kembali ke 'message'
 ];
 
-$ch = curl_init($gatewayUrl);
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-curl_setopt($ch, CURLOPT_TIMEOUT, 50);
-curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+$maxRetries = 2;
+$attempt = 0;
+$result = false;
+$httpCode = 0;
+$curlError = '';
+$curlErrno = 0;
 
-$result = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$curlError = curl_error($ch);
-$curlErrno = curl_errno($ch);
-curl_close($ch);
+do {
+    $attempt++;
+    $ch = curl_init($gatewayUrl);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 60); // Timeout total eksekusi
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30); // Timeout koneksi (DNS/TCP)
+
+    $result = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    $curlErrno = curl_errno($ch);
+    curl_close($ch);
+
+    // Jika error timeout (28) atau tidak bisa resolve host (6) DAN menggunakan domain sendiri
+    // Maka coba switch ke localhost untuk attempt berikutnya
+    if (($curlErrno == 28 || $curlErrno == 6) && strpos($gatewayUrl, 'telebot.appsbee.my.id') !== false && $attempt < $maxRetries) {
+        echo "⚠️  WARNING: Gagal connect ke $gatewayUrl (Errno: $curlErrno). Retrying via localhost...\n";
+        $gatewayUrl = str_replace('https://telebot.appsbee.my.id', 'http://localhost:3000', $gatewayUrl);
+        continue;
+    }
+
+    // Jika tidak perlu retry, break loop
+    break;
+    
+} while ($attempt < $maxRetries);
 
 // Output hasil
 echo "=== Hasil Pengiriman ===\n";
