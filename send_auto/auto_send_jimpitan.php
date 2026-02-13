@@ -141,18 +141,37 @@ if ($httpCode == 0) {
             'sender_name'   => 'System Alert'
         ];
 
-        $chJ = curl_init($jimpitanApiUrl);
-        curl_setopt($chJ, CURLOPT_POST, true);
-        curl_setopt($chJ, CURLOPT_POSTFIELDS, $jimpitanData);
-        curl_setopt($chJ, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($chJ, CURLOPT_TIMEOUT, 30);
-        curl_setopt($chJ, CURLOPT_CONNECTTIMEOUT, 10);
-        
-        $jResult = curl_exec($chJ);
-        $jHttpCode = curl_getinfo($chJ, CURLINFO_HTTP_CODE);
-        $jCurlError = curl_error($chJ);
-        $jCurlErrno = curl_errno($chJ);
-        curl_close($chJ);
+        // Retry Logic untuk Jimpitan API
+        $maxRetriesJ = 2;
+        $attemptJ = 0;
+        $jHttpCode = 0;
+        $jCurlError = '';
+        $jCurlErrno = 0;
+        $jResult = false;
+
+        do {
+            $attemptJ++;
+            $chJ = curl_init($jimpitanApiUrl);
+            curl_setopt($chJ, CURLOPT_POST, true);
+            curl_setopt($chJ, CURLOPT_POSTFIELDS, $jimpitanData);
+            curl_setopt($chJ, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($chJ, CURLOPT_TIMEOUT, 60); 
+            curl_setopt($chJ, CURLOPT_CONNECTTIMEOUT, 30);
+            
+            $jResult = curl_exec($chJ);
+            $jHttpCode = curl_getinfo($chJ, CURLINFO_HTTP_CODE);
+            $jCurlError = curl_error($chJ);
+            $jCurlErrno = curl_errno($chJ);
+            curl_close($chJ);
+
+            // Retry jika timeout/DNS error
+            if (($jCurlErrno == 28 || $jCurlErrno == 6) && $attemptJ < $maxRetriesJ) {
+                echo "⚠️  WARNING: Gagal connect ke Jimpitan (Attempt $attemptJ). Retrying...\n";
+                sleep(1); // Kasih jeda sedikit
+                continue;
+            }
+            break;
+        } while ($attemptJ < $maxRetriesJ);
 
         if ($jHttpCode == 200) {
              echo "✅ Jimpitan: Pesan diteruskan ke aplikasi & Notifikasi dipicu (Realtime)!\n";
