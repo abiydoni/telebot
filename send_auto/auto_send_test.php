@@ -155,4 +155,54 @@ if ($httpCode == 0) {
         echo "Response: " . substr($result, 0, 500) . "\n";
     }
 }
+
+/**
+ * =========================================================================
+ * TAMBAHAN: TEST INTEGRASI WA-AKG (NEW GATEWAY)
+ * DITAMBAHKAN PADA: 2026-03-20
+ * =========================================================================
+ */
+echo "\n\n--- [TEST] Mencoba Mengirim via WA-AKG ---\n";
+$waAkgSession = 'Jimpitan';
+$waAkgJid     = '120363398680818900@g.us';
+$waAkgApiKey  = 'wag_OAbXNpfK7bI7xAtX217HWc8zdOKeJAiP';
+$waAkgUrl     = "https://wa-akg.aikeigroup.net/api/messages/$waAkgSession/$waAkgJid/send";
+
+$waAkgData = [
+    'message' => [
+        'text' => $message . "\n\n(Sent via WA-AKG Test)"
+    ]
+];
+
+$chAkg = curl_init($waAkgUrl);
+curl_setopt($chAkg, CURLOPT_POST, true);
+curl_setopt($chAkg, CURLOPT_POSTFIELDS, json_encode($waAkgData));
+curl_setopt($chAkg, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($chAkg, CURLOPT_HTTPHEADER, [
+    'Content-Type: application/json',
+    'X-API-Key: ' . $waAkgApiKey
+]);
+curl_setopt($chAkg, CURLOPT_TIMEOUT, 30);
+
+$akgResult = curl_exec($chAkg);
+$akgHttpCode = curl_getinfo($chAkg, CURLINFO_HTTP_CODE);
+$akgError = curl_error($chAkg);
+curl_close($chAkg);
+
+echo "WA-AKG HTTP Code: $akgHttpCode\n";
+if ($akgHttpCode == 200) {
+    echo "✅ WA-AKG SUCCESS: Pesan berhasil dikirim!\n";
+    echo "Response: " . $akgResult . "\n";
+} else {
+    echo "❌ WA-AKG ERROR: Gagal mengirim pesan.\n";
+    echo "Response: $akgResult\n";
+    if ($akgError) {
+        echo "CURL Error: $akgError\n";
+    }
+}
+/**
+ * =========================================================================
+ * END TEST INTEGRASI WA-AKG
+ * =========================================================================
+ */
 ?>
