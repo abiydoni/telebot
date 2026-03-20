@@ -10,7 +10,7 @@ ini_set('display_errors', 1);
 
 // INFORMASI TEST
 $waAkgApiKey  = 'wag_OAbXNpfK7bI7xAtX217HWc8zdOKeJAiP';
-$waAkgSession = 'Jimpitan';
+$waAkgSession = 'cmmvhv1c10bg73qrxhbvdq6wc'; // Ganti dari 'Jimpitan' ke ID aslinya!
 $personalJid  = '6285225106200@s.whatsapp.net';
 $groupJid     = '120363398680818900@g.us';
 
