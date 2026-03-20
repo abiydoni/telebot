@@ -166,11 +166,13 @@ echo "\n\n--- [TEST] Mencoba Mengirim via WA-AKG ---\n";
 $waAkgSession = 'Jimpitan';
 $waAkgJid     = '120363398680818900@g.us';
 $waAkgApiKey  = 'wag_OAbXNpfK7bI7xAtX217HWc8zdOKeJAiP';
-$waAkgUrl     = "https://wa-akg.aikeigroup.net/api/messages/$waAkgSession/" . urlencode($waAkgJid) . "/send";
+$waAkgUrl     = "https://wa-akg.aikeigroup.net/api/chat/send";
 
 $waAkgData = [
-    'message' => [
-        'text' => $message . "\n\n(Sent via WA-AKG Test)"
+    'sessionId' => $waAkgSession,
+    'jid'       => $waAkgJid,
+    'message'   => [
+        'text' => $message . "\n\n(Sent via WA-AKG Test Deprecated)"
     ]
 ];
 
@@ -183,6 +185,7 @@ curl_setopt($chAkg, CURLOPT_HTTPHEADER, [
     'X-API-Key: ' . $waAkgApiKey
 ]);
 curl_setopt($chAkg, CURLOPT_TIMEOUT, 30);
+curl_setopt($chAkg, CURLOPT_SSL_VERIFYPEER, false);
 
 $akgResult = curl_exec($chAkg);
 $akgHttpCode = curl_getinfo($chAkg, CURLINFO_HTTP_CODE);
