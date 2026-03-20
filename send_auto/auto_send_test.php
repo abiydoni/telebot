@@ -162,8 +162,8 @@ if ($httpCode == 0) {
  * DITAMBAHKAN PADA: 2026-03-20
  * =========================================================================
  */
-echo "\n\n--- [TEST] Mencoba Mengirim via WA-AKG ---\n";
-$waAkgSession = 'Randuares-RT07'; // ID asesi baru: Randuares-RT07
+echo "\n--- Mengirim via WA-AKG ---\n";
+$waAkgSession = 'Randuares-RT07'; 
 $waAkgJid     = '120363398680818900@g.us';
 $waAkgApiKey  = 'wag_OAbXNpfK7bI7xAtX217HWc8zdOKeJAiP';
 $waAkgUrl     = "https://wa-akg.aikeigroup.net/api/messages/$waAkgSession/" . urlencode($waAkgJid) . "/send";
@@ -187,23 +187,17 @@ curl_setopt($chAkg, CURLOPT_SSL_VERIFYPEER, false);
 
 $akgResult = curl_exec($chAkg);
 $akgHttpCode = curl_getinfo($chAkg, CURLINFO_HTTP_CODE);
-$akgError = curl_error($chAkg);
 curl_close($chAkg);
 
-echo "WA-AKG HTTP Code: $akgHttpCode\n";
 if ($akgHttpCode == 200) {
-    echo "✅ WA-AKG SUCCESS: Pesan berhasil dikirim!\n";
-    echo "Response: " . $akgResult . "\n";
+    echo "✅ WA-AKG: Berhasil dikirim!\n";
 } else {
-    echo "❌ WA-AKG ERROR: Gagal mengirim pesan.\n";
+    echo "❌ WA-AKG: Gagal (HTTP $akgHttpCode)\n";
     echo "Response: $akgResult\n";
-    if ($akgError) {
-        echo "CURL Error: $akgError\n";
-    }
 }
 /**
  * =========================================================================
- * END TEST INTEGRASI WA-AKG
+ * END INTEGRASI WA-AKG
  * =========================================================================
  */
 ?>

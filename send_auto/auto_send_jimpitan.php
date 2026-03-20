@@ -195,4 +195,49 @@ if ($httpCode == 0) {
         echo "Response: " . substr($result, 0, 500) . "\n";
     }
 }
+
+/**
+ * =========================================================================
+ * TAMBAHAN: INTEGRASI WA-AKG (NEW GATEWAY)
+ * DITAMBAHKAN PADA: 2026-03-20
+ * =========================================================================
+ */
+echo "\n--- Mengirim via WA-AKG ---\n";
+$waAkgSession = 'Randuares-RT07'; 
+$waAkgJid     = '6285729705810-1505093181@g.us';
+$waAkgApiKey  = 'wag_OAbXNpfK7bI7xAtX217HWc8zdOKeJAiP';
+$waAkgUrl     = "https://wa-akg.aikeigroup.net/api/messages/$waAkgSession/" . urlencode($waAkgJid) . "/send";
+
+$waAkgData = [
+    'message' => [
+        'text' => $message
+    ]
+];
+
+$chAkg = curl_init($waAkgUrl);
+curl_setopt($chAkg, CURLOPT_POST, true);
+curl_setopt($chAkg, CURLOPT_POSTFIELDS, json_encode($waAkgData));
+curl_setopt($chAkg, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($chAkg, CURLOPT_HTTPHEADER, [
+    'Content-Type: application/json',
+    'X-API-Key: ' . $waAkgApiKey
+]);
+curl_setopt($chAkg, CURLOPT_TIMEOUT, 30);
+curl_setopt($chAkg, CURLOPT_SSL_VERIFYPEER, false);
+
+$akgResult = curl_exec($chAkg);
+$akgHttpCode = curl_getinfo($chAkg, CURLINFO_HTTP_CODE);
+curl_close($chAkg);
+
+if ($akgHttpCode == 200) {
+    echo "✅ WA-AKG: Berhasil dikirim!\n";
+} else {
+    echo "❌ WA-AKG: Gagal (HTTP $akgHttpCode)\n";
+    echo "Response: $akgResult\n";
+}
+/**
+ * =========================================================================
+ * END INTEGRASI WA-AKG
+ * =========================================================================
+ */
 ?>
