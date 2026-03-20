@@ -163,16 +163,14 @@ if ($httpCode == 0) {
  * =========================================================================
  */
 echo "\n\n--- [TEST] Mencoba Mengirim via WA-AKG ---\n";
-$waAkgSession = 'Jimpitan';
+$waAkgSession = 'Randuares-RT07'; // ID asesi baru: Randuares-RT07
 $waAkgJid     = '120363398680818900@g.us';
 $waAkgApiKey  = 'wag_OAbXNpfK7bI7xAtX217HWc8zdOKeJAiP';
-$waAkgUrl     = "https://wa-akg.aikeigroup.net/api/chat/send";
+$waAkgUrl     = "https://wa-akg.aikeigroup.net/api/messages/$waAkgSession/" . urlencode($waAkgJid) . "/send";
 
 $waAkgData = [
-    'sessionId' => $waAkgSession,
-    'jid'       => $waAkgJid,
-    'message'   => [
-        'text' => $message . "\n\n(Sent via WA-AKG Test Deprecated)"
+    'message' => [
+        'text' => $message
     ]
 ];
 
