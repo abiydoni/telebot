@@ -166,7 +166,7 @@ echo "\n\n--- [TEST] Mencoba Mengirim via WA-AKG ---\n";
 $waAkgSession = 'Jimpitan';
 $waAkgJid     = '120363398680818900@g.us';
 $waAkgApiKey  = 'wag_OAbXNpfK7bI7xAtX217HWc8zdOKeJAiP';
-$waAkgUrl     = "https://wa-akg.aikeigroup.net/api/messages/$waAkgSession/$waAkgJid/send";
+$waAkgUrl     = "https://wa-akg.aikeigroup.net/api/messages/$waAkgSession/" . urlencode($waAkgJid) . "/send";
 
 $waAkgData = [
     'message' => [
