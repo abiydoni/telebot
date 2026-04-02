@@ -25,8 +25,8 @@ try {
     // Ambil tanggal hari ini (tanpa tahun)
     $today = date('m-d');
 
-    // Query warga yang ulang tahun hari ini
-    $stmt = $pdo->prepare("SELECT nama, tgl_lahir FROM tb_warga WHERE DATE_FORMAT(tgl_lahir, '%m-%d') = ?");
+    // Query warga yang ulang tahun hari ini, kecualikan yang sudah meninggal
+    $stmt = $pdo->prepare("SELECT nama, tgl_lahir FROM tb_warga WHERE DATE_FORMAT(tgl_lahir, '%m-%d') = ? AND (tgl_meninggal IS NULL OR tgl_meninggal = '0000-00-00')");
     $stmt->execute([$today]);
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

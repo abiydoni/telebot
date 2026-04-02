@@ -15,6 +15,33 @@ if (!empty($filePesan)) {
     if (file_exists($filePesan)) {
         include $filePesan;
         $message = isset($pesan) ? trim((string)$pesan) : '';
+        
+        // Jika tidak ada warga yang ulang tahun, ubah pesan menjadi motivasi harian
+        if (isset($data) && is_array($data) && count($data) === 0) {
+            $motivasi = [
+                "Selamat pagi warga RT 07! Awali hari ini dengan senyuman dan semangat yang baru. Semoga hari ini membawa berkah untuk kita semua.",
+                "Semangat pagi! Tidak ada keberhasilan tanpa kerja keras. Mari kita jadikan hari ini lebih baik dari hari kemarin.",
+                "Selamat pagi! Tetap bersyukur atas apapun yang kita miliki hari ini. Semoga segala aktivitas hari ini selalu dilancarkan.",
+                "Semangat pagi! Jadikan setiap tantangan hari ini sebagai batu loncatan menuju kesuksesan. Terus melangkah maju, RT 07!",
+                "Awali pagimu dengan rasa syukur dan secangkir semangat. Mari bina kerukunan dan saling peduli antar sesama warga RT 07.",
+                "Hari baru, semangat baru! Jangan lupa untuk selalu menebar kebaikan kepada sesama warga di lingkungan kita."
+            ];
+            $pesanMotivasi = $motivasi[array_rand($motivasi)];
+            
+            // Format pesan motivasi
+            $message = "✨ *MOTIVASI HARI INI* ✨\n";
+            $message .= "━━━━━━━━━━━━━━━━━━━━\n\n";
+            if (function_exists('escapeMarkdown')) {
+                $message .= "_" . escapeMarkdown($pesanMotivasi) . "_\n\n";
+            } else {
+                $message .= "_" . $pesanMotivasi . "_\n\n";
+            }
+            $message .= "━━━━━━━━━━━━━━━━━━━━\n";
+            $message .= "💐 *Salam hangat dari RT 07!*\n\n";
+            $message .= "_- Pesan Otomatis dari System -_";
+            
+            echo "ℹ️  Info: Tidak ada yang ulang tahun, mengirimkan pesan motivasi.\n";
+        }
     }
 }
 
@@ -59,7 +86,12 @@ if (strpos($gatewayBase, '/send-group-message') === false && strpos($gatewayBase
 
 echo "ℹ️  Info: Menggunakan URL Gateway: $gatewayUrl\n";
 
-// Payload data ORIGINAL (untuk WA Gateway / System sendiri)
+/**
+ * =========================================================================
+ * 1. KIRIM VIA TELEGRAM GATEWAY (Sistem Otomatis / Bot Lama)
+ * =========================================================================
+ */
+// Payload data ORIGINAL
 $data = [
     'id' => $groupId,      // Kembali ke 'id'
     'message' => $message  // Kembali ke 'message'
@@ -104,7 +136,11 @@ if ($httpCode == 0) {
     if (isset($response['status']) && $response['status']) {
         echo "✅ SUCCESS: Pesan berhasil dikirim ke WhatsApp!\n";
 
-        // --- REALTIME NOTIFICATION ---
+        /**
+         * =========================================================================
+         * 2. KIRIM KE APLIKASI JIMPITAN / DATABASE CHAT (NOTIFIKASI REALTIME FCM)
+         * =========================================================================
+         */
         // Alih-alih input database manual, kita panggil API Jimpitan
         // agar notifikasi FCM langsung terkirim secara instan.
         
@@ -156,7 +192,7 @@ if ($httpCode == 0) {
 
 /**
  * =========================================================================
- * TAMBAHAN: INTEGRASI WA-AKG (NEW GATEWAY)
+ * 3. KIRIM VIA WHATSAPP (INTEGRASI WA-AKG NEW GATEWAY)
  * DITAMBAHKAN PADA: 2026-03-20
  * =========================================================================
  */

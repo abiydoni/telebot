@@ -59,7 +59,12 @@ if (strpos($gatewayBase, '/send-group-message') === false && strpos($gatewayBase
 
 echo "ℹ️  Info: Menggunakan URL Gateway: $gatewayUrl\n";
 
-// Payload data ORIGINAL (untuk WA Gateway / System sendiri)
+/**
+ * =========================================================================
+ * 1. KIRIM VIA TELEGRAM GATEWAY (Sistem Otomatis / Bot Lama)
+ * =========================================================================
+ */
+// Payload data ORIGINAL
 $data = [
     'id' => $groupId,      // Kembali ke 'id'
     'message' => $message  // Kembali ke 'message'
@@ -126,7 +131,11 @@ if ($httpCode == 0) {
     if (isset($response['status']) && $response['status']) {
         echo "✅ SUCCESS: Pesan berhasil dikirim ke WhatsApp!\n";
 
-        // --- REALTIME NOTIFICATION ---
+        /**
+         * =========================================================================
+         * 2. KIRIM KE APLIKASI JIMPITAN / DATABASE CHAT (NOTIFIKASI REALTIME FCM)
+         * =========================================================================
+         */
         // Alih-alih input database manual, kita panggil API Jimpitan
         // agar notifikasi FCM langsung terkirim secara instan.
         
@@ -164,8 +173,9 @@ if ($httpCode == 0) {
             $jCurlErrno = curl_errno($chJ);
             curl_close($chJ);
 
-            // Retry jika timeout/DNS error
-            if (($jCurlErrno == 28 || $jCurlErrno == 6) && $attemptJ < $maxRetriesJ) {
+            // Jangan retry jika timeout (28) karena kemungkinan besar data sudah masuk ke database
+            // Hanya retry jika gagal resolve host (6)
+            if ($jCurlErrno == 6 && $attemptJ < $maxRetriesJ) {
                 echo "⚠️  WARNING: Gagal connect ke Jimpitan (Attempt $attemptJ). Retrying...\n";
                 sleep(1); // Kasih jeda sedikit
                 continue;
@@ -198,7 +208,7 @@ if ($httpCode == 0) {
 
 /**
  * =========================================================================
- * TAMBAHAN: INTEGRASI WA-AKG (NEW GATEWAY)
+ * 3. KIRIM VIA WHATSAPP (INTEGRASI WA-AKG NEW GATEWAY)
  * DITAMBAHKAN PADA: 2026-03-20
  * =========================================================================
  */
