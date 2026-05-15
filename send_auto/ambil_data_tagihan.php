@@ -74,11 +74,21 @@ try {
             $namaWarga = $w['nama'];
             $jmlScan = "(" . $w['scan_count'] . "x)";
             
+            // Format nomor agar 1 dan 10 sejajar (tambah spasi jika < 10)
+            $noStr = $no < 10 ? $no . ". " : $no . ".";
+            
             if ($w['sisa_tagihan'] > 0) {
-                $nominalFmt = "Rp " . number_format($w['sisa_tagihan'], 0, ',', '.');
-                $message .= $no . ". " . $namaWarga . " - " . $nominalFmt . " " . $jmlScan . "\n";
+                $nominalStr = number_format($w['sisa_tagihan'], 0, ',', '.');
+                // Jika nominal hanya ribuan (misal 1.000), tambahkan spasi di depan agar sejajar dengan puluhan ribu (15.000)
+                if (strlen($nominalStr) < 6) {
+                    $nominalStr = " " . $nominalStr;
+                }
+                $colNominal = "Rp " . $nominalStr;
+                
+                $message .= $noStr . " " . $colNominal . " - " . $namaWarga . " " . $jmlScan . "\n";
             } else {
-                $message .= $no . ". " . $namaWarga . " - *LUNAS* " . $jmlScan . "\n";
+                // LUNAS ditambah spasi agar lebarnya sama dengan "Rp 15.000" (9 karakter)
+                $message .= $noStr . " LUNAS     - " . $namaWarga . " " . $jmlScan . "\n";
             }
             $no++;
         }
