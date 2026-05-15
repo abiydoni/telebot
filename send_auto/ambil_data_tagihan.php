@@ -58,8 +58,9 @@ try {
 
     if (count($wargaBelumLunas) > 0) {
         $message = "📢 *INFORMASI TAGIHAN JIMPITAN*\n";
-        $message .= "Bulan: *$bulanTeks*\n\n";
-        $message .= "Berdasarkan catatan sistem, berikut adalah daftar warga yang masih memiliki sisa tagihan jimpitan:\n\n";
+        $message .= "====================\n\n";
+        $message .= "🗓 Bulan: *$bulanTeks*\n\n";
+        $message .= "📋 Berdasarkan catatan sistem, berikut adalah daftar warga yang masih memiliki sisa tagihan jimpitan:\n\n";
         
         // Menggunakan blok monospace (```) agar font rata di WhatsApp
         $message .= "```\n";
@@ -81,13 +82,16 @@ try {
         }
         $message .= "```\n";
         
-        $message .= "\n_Mohon untuk segera melunasi tagihan tersebut. Abaikan pesan ini jika merasa sudah membayar lunas. Terima kasih._\n\n";
-        $message .= "*- Pengurus RT 07 -*";
+        $message .= "\n====================\n";
+        $message .= "💡 _Mohon untuk segera melunasi tagihan tersebut. Abaikan pesan ini jika merasa sudah membayar lunas. Terima kasih._\n\n";
+        $message .= "🙏🏻 *- Pengurus RT 07 -*";
     } else {
         $message = "🎉 *INFORMASI JIMPITAN*\n";
-        $message .= "Bulan: *$bulanTeks*\n\n";
-        $message .= "Alhamdulillah, seluruh tagihan jimpitan warga bulan $bulanTeks telah *LUNAS*. Terima kasih atas partisipasi aktif seluruh warga RT 07.\n\n";
-        $message .= "*- Pengurus RT 07 -*";
+        $message .= "====================\n\n";
+        $message .= "🗓 Bulan: *$bulanTeks*\n\n";
+        $message .= "✨ Alhamdulillah, seluruh tagihan jimpitan warga bulan $bulanTeks telah *LUNAS*. Terima kasih atas partisipasi aktif seluruh warga RT 07. ✨\n\n";
+        $message .= "====================\n";
+        $message .= "🙏🏻 *- Pengurus RT 07 -*";
     }
 
 } catch (Exception $e) {
