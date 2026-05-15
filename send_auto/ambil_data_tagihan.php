@@ -38,20 +38,22 @@ try {
         $namaWarga = $warga['kk_name'];
 
         // 3. Hitung jumlah yang sudah discan (Hanya yang status = 1 / valid)
-        $stmtScan = $pdo->prepare("SELECT SUM(nominal) as total_scanned FROM report WHERE report_id = :code_id AND jimpitan_date LIKE :prev_month AND status = 1 AND (alasan != 'Tagihan Bulan Sebelumnya' OR alasan IS NULL)");
+        $stmtScan = $pdo->prepare("SELECT SUM(nominal) as total_scanned, COUNT(id) as scan_count FROM report WHERE report_id = :code_id AND jimpitan_date LIKE :prev_month AND status = 1 AND (alasan != 'Tagihan Bulan Sebelumnya' OR alasan IS NULL)");
         $stmtScan->execute([
             ':code_id' => $codeId,
             ':prev_month' => $prevMonth . '-%'
         ]);
         $scanRow = $stmtScan->fetch();
         $totalScanned = $scanRow['total_scanned'] ? (int)$scanRow['total_scanned'] : 0;
+        $scanCount = $scanRow['scan_count'] ? (int)$scanRow['scan_count'] : 0;
 
         // 4. Hitung sisa tagihan
         $sisaTagihan = $totalTagihanSeharusnya - $totalScanned;
 
         $semuaWarga[] = [
             'nama' => $namaWarga,
-            'sisa_tagihan' => $sisaTagihan
+            'sisa_tagihan' => $sisaTagihan,
+            'scan_count' => $scanCount
         ];
 
         if ($sisaTagihan > 0) {
@@ -80,7 +82,7 @@ try {
                 // Nominal (Rata Kanan)
                 $nominalFmt = number_format($w['sisa_tagihan'], 0, ',', '.');
                 $colNominal = str_pad($nominalFmt, 6, " ", STR_PAD_LEFT);
-                $message .= $colNo . " " . $colNama . " Rp" . $colNominal . "\n";
+                $message .= $colNo . " " . $colNama . " Rp" . $colNominal . " (Scans: " . $w['scan_count'] . ")\n";
             } else {
                 $message .= $colNo . " " . $colNama . "   LUNAS\n";
             }
