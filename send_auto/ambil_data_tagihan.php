@@ -74,9 +74,9 @@ try {
             // Nomor (3 karakter)
             $colNo = str_pad($no . ".", 3, " ", STR_PAD_RIGHT);
             
-            // Nama dibatasi 15 karakter
-            $namaPendek = mb_substr($w['nama'], 0, 15);
-            $colNama = $namaPendek . str_repeat(" ", 15 - mb_strlen($namaPendek));
+            // Nama dibatasi 18 karakter
+            $namaPendek = mb_substr($w['nama'], 0, 18);
+            $colNama = $namaPendek . str_repeat(" ", 18 - mb_strlen($namaPendek));
             
             if ($w['sisa_tagihan'] > 0) {
                 $nominalStr = number_format($w['sisa_tagihan'], 0, ',', '.');
