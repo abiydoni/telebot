@@ -65,7 +65,7 @@ try {
         $message .= "🗓 Bulan: *$bulanTeks*\n\n";
         $message .= "📋 Berikut adalah rekapitulasi tagihan jimpitan warga:\n\n";
         
-        $message .= "```\n";
+        $message .= "\n";
         $no = 1;
         foreach ($semuaWarga as $w) {
             // Nomor (3 karakter)
@@ -85,7 +85,6 @@ try {
             }
             $no++;
         }
-        $message .= "```\n";
         
         $message .= "\n━━━━━━━━━━━━━━━━━━━━\n";
         if ($adaTunggakan) {
