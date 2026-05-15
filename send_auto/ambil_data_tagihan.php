@@ -68,33 +68,28 @@ try {
         $message .= "ℹ️ Info Tagihan: $daysInMonth hari x Rp $tarif = Rp " . number_format($totalTagihanSeharusnya, 0, ',', '.') . "\n\n";
         $message .= "📋 Berikut adalah rekapitulasi tagihan jimpitan warga:\n\n";
         
-        $message .= "\n";
+        $message .= "```\n";
         $no = 1;
         foreach ($semuaWarga as $w) {
-            // Nomor (3 karakter) pakai NBSP
-            $noStr = $no . ".";
-            $colNo = $noStr . str_repeat("\xC2\xA0", 3 - mb_strlen($noStr));
+            // Nomor (3 karakter)
+            $colNo = str_pad($no . ".", 3, " ", STR_PAD_RIGHT);
             
-            // Nama dibatasi 16 karakter, sisanya diisi NBSP agar spasi tidak hilang di WA
-            $namaPendek = mb_substr($w['nama'], 0, 16);
-            $colNama = $namaPendek . str_repeat("\xC2\xA0", 16 - mb_strlen($namaPendek));
+            // Nama dibatasi 15 karakter
+            $namaPendek = mb_substr($w['nama'], 0, 15);
+            $colNama = $namaPendek . str_repeat(" ", 15 - mb_strlen($namaPendek));
             
             $jmlScan = "(" . $w['scan_count'] . "x)";
             
             if ($w['sisa_tagihan'] > 0) {
                 $nominalStr = number_format($w['sisa_tagihan'], 0, ',', '.');
-                if (strlen($nominalStr) < 6) {
-                    $nominalStr = "\xC2\xA0" . $nominalStr; // padding 1 spasi untuk ribuan
-                }
-                $colNominal = "Rp\xC2\xA0" . $nominalStr;
-                
-                $message .= $colNo . " " . $colNama . " " . $colNominal . " " . $jmlScan . "\n";
+                $colNominal = str_pad($nominalStr, 6, " ", STR_PAD_LEFT);
+                $message .= $colNo . " " . $colNama . " Rp" . $colNominal . " " . $jmlScan . "\n";
             } else {
-                $message .= $colNo . " " . $colNama . " LUNAS\xC2\xA0\xC2\xA0\xC2\xA0\xC2\xA0 " . $jmlScan . "\n";
+                $message .= $colNo . " " . $colNama . "   LUNAS " . $jmlScan . "\n";
             }
             $no++;
         }
-        $message .= "\n";
+        $message .= "```\n";
         
         $message .= "\n━━━━━━━━━━━━━━━━━━━━\n";
         if ($adaTunggakan) {
