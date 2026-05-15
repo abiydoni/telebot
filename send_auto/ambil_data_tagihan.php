@@ -62,7 +62,8 @@ try {
     if (count($semuaWarga) > 0) {
         $message = "📢 *INFORMASI TAGIHAN JIMPITAN*\n";
         $message .= "━━━━━━━━━━━━━━━━━━━━\n\n";
-        $message .= "🗓 Bulan: *$bulanTeks*\n\n";
+        $message .= "🗓 Bulan: *$bulanTeks*\n";
+        $message .= "ℹ️ Info Tagihan Penuh: $daysInMonth hari x Rp $tarif = Rp " . number_format($totalTagihanSeharusnya, 0, ',', '.') . "\n\n";
         $message .= "📋 Berikut adalah rekapitulasi tagihan jimpitan warga:\n\n";
         
         $message .= "\n";
