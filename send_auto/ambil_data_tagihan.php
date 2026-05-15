@@ -71,24 +71,26 @@ try {
         $message .= "\n";
         $no = 1;
         foreach ($semuaWarga as $w) {
-            $namaWarga = $w['nama'];
-            $jmlScan = "(" . $w['scan_count'] . "x)";
+            // Nomor (3 karakter) pakai NBSP
+            $noStr = $no . ".";
+            $colNo = $noStr . str_repeat("\xC2\xA0", 3 - mb_strlen($noStr));
             
-            // Format nomor agar 1 dan 10 sejajar (tambah spasi jika < 10)
-            $noStr = $no < 10 ? $no . ". " : $no . ".";
+            // Nama dibatasi 16 karakter, sisanya diisi NBSP agar spasi tidak hilang di WA
+            $namaPendek = mb_substr($w['nama'], 0, 16);
+            $colNama = $namaPendek . str_repeat("\xC2\xA0", 16 - mb_strlen($namaPendek));
+            
+            $jmlScan = "(" . $w['scan_count'] . "x)";
             
             if ($w['sisa_tagihan'] > 0) {
                 $nominalStr = number_format($w['sisa_tagihan'], 0, ',', '.');
-                // Jika nominal hanya ribuan (misal 1.000), tambahkan spasi di depan agar sejajar dengan puluhan ribu (15.000)
                 if (strlen($nominalStr) < 6) {
-                    $nominalStr = " " . $nominalStr;
+                    $nominalStr = "\xC2\xA0" . $nominalStr; // padding 1 spasi untuk ribuan
                 }
-                $colNominal = "Rp " . $nominalStr;
+                $colNominal = "Rp\xC2\xA0" . $nominalStr;
                 
-                $message .= $noStr . " " . $colNominal . " - " . $namaWarga . " " . $jmlScan . "\n";
+                $message .= $colNo . " " . $colNama . " " . $colNominal . " " . $jmlScan . "\n";
             } else {
-                // LUNAS ditambah spasi agar lebarnya sama dengan "Rp 15.000" (9 karakter)
-                $message .= $noStr . " LUNAS     - " . $namaWarga . " " . $jmlScan . "\n";
+                $message .= $colNo . " " . $colNama . " LUNAS\xC2\xA0\xC2\xA0\xC2\xA0\xC2\xA0 " . $jmlScan . "\n";
             }
             $no++;
         }
