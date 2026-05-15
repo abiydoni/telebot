@@ -37,8 +37,8 @@ try {
         $codeId = $warga['code_id'];
         $namaWarga = $warga['kk_name'];
 
-        // 3. Hitung jumlah yang sudah discan
-        $stmtScan = $pdo->prepare("SELECT SUM(nominal) as total_scanned FROM report WHERE report_id = :code_id AND jimpitan_date LIKE :prev_month AND alasan != 'Tagihan Bulan Sebelumnya'");
+        // 3. Hitung jumlah yang sudah discan (Hanya yang status = 1 / valid)
+        $stmtScan = $pdo->prepare("SELECT SUM(nominal) as total_scanned FROM report WHERE report_id = :code_id AND jimpitan_date LIKE :prev_month AND status = 1 AND (alasan != 'Tagihan Bulan Sebelumnya' OR alasan IS NULL)");
         $stmtScan->execute([
             ':code_id' => $codeId,
             ':prev_month' => $prevMonth . '-%'
