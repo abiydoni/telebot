@@ -65,7 +65,7 @@ try {
         $message = "📢 *INFORMASI TAGIHAN JIMPITAN*\n";
         $message .= "━━━━━━━━━━━━━━━━━━━━\n\n";
         $message .= "🗓 Bulan: *$bulanTeks*\n";
-        $message .= "ℹ️ Info Tagihan Penuh: $daysInMonth hari x Rp $tarif = Rp " . number_format($totalTagihanSeharusnya, 0, ',', '.') . "\n\n";
+        $message .= "ℹ️ Info Tagihan: $daysInMonth hari x Rp $tarif = Rp " . number_format($totalTagihanSeharusnya, 0, ',', '.') . "\n\n";
         $message .= "📋 Berikut adalah rekapitulasi tagihan jimpitan warga:\n\n";
         
         $message .= "\n";
@@ -78,13 +78,15 @@ try {
             $namaPendek = substr($w['nama'], 0, 15);
             $colNama = str_pad($namaPendek, 15, " ", STR_PAD_RIGHT);
             
+            $jmlScan = "(" . $w['scan_count'] . "x)";
+            
             if ($w['sisa_tagihan'] > 0) {
                 // Nominal (Rata Kanan)
                 $nominalFmt = number_format($w['sisa_tagihan'], 0, ',', '.');
                 $colNominal = str_pad($nominalFmt, 6, " ", STR_PAD_LEFT);
-                $message .= $colNo . " " . $colNama . " Rp" . $colNominal . " (Scans: " . $w['scan_count'] . ")\n";
+                $message .= $colNo . " " . $colNama . " Rp" . $colNominal . " " . $jmlScan . "\n";
             } else {
-                $message .= $colNo . " " . $colNama . "   LUNAS\n";
+                $message .= $colNo . " " . $colNama . "   LUNAS " . $jmlScan . "\n";
             }
             $no++;
         }
