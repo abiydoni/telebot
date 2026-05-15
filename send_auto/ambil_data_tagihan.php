@@ -59,13 +59,27 @@ try {
     if (count($wargaBelumLunas) > 0) {
         $message = "📢 *INFORMASI TAGIHAN JIMPITAN*\n";
         $message .= "Bulan: *$bulanTeks*\n\n";
-        $message .= "Berdasarkan catatan sistem, berikut adalah daftar warga yang masih memiliki sisa tagihan jimpitan bulan $bulanTeks:\n\n";
+        $message .= "Berdasarkan catatan sistem, berikut adalah daftar warga yang masih memiliki sisa tagihan jimpitan:\n\n";
         
+        // Menggunakan blok monospace (```) agar font rata di WhatsApp
+        $message .= "```\n";
         $no = 1;
         foreach ($wargaBelumLunas as $w) {
-            $message .= $no . ". " . $w['nama'] . " - Rp " . number_format($w['sisa_tagihan'], 0, ',', '.') . "\n";
+            // Nomor (3 karakter)
+            $colNo = str_pad($no . ".", 3, " ", STR_PAD_RIGHT);
+            
+            // Nama (Maksimal 15 karakter, sisanya dipotong)
+            $namaPendek = substr($w['nama'], 0, 15);
+            $colNama = str_pad($namaPendek, 15, " ", STR_PAD_RIGHT);
+            
+            // Nominal (Rata Kanan)
+            $nominalFmt = number_format($w['sisa_tagihan'], 0, ',', '.');
+            $colNominal = str_pad($nominalFmt, 6, " ", STR_PAD_LEFT);
+            
+            $message .= $colNo . " " . $colNama . " Rp" . $colNominal . "\n";
             $no++;
         }
+        $message .= "```\n";
         
         $message .= "\n_Mohon untuk segera melunasi tagihan tersebut. Abaikan pesan ini jika merasa sudah membayar lunas. Terima kasih._\n\n";
         $message .= "*- Pengurus RT 07 -*";
