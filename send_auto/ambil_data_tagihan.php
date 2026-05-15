@@ -30,7 +30,8 @@ try {
     $stmtKK->execute();
     $wargaList = $stmtKK->fetchAll();
 
-    $wargaBelumLunas = [];
+    $semuaWarga = [];
+    $adaTunggakan = false;
 
     foreach ($wargaList as $warga) {
         $codeId = $warga['code_id'];
@@ -48,24 +49,25 @@ try {
         // 4. Hitung sisa tagihan
         $sisaTagihan = $totalTagihanSeharusnya - $totalScanned;
 
+        $semuaWarga[] = [
+            'nama' => $namaWarga,
+            'sisa_tagihan' => $sisaTagihan
+        ];
+
         if ($sisaTagihan > 0) {
-            $wargaBelumLunas[] = [
-                'nama' => $namaWarga,
-                'sisa_tagihan' => $sisaTagihan
-            ];
+            $adaTunggakan = true;
         }
     }
 
-    if (count($wargaBelumLunas) > 0) {
+    if (count($semuaWarga) > 0) {
         $message = "📢 *INFORMASI TAGIHAN JIMPITAN*\n";
         $message .= "━━━━━━━━━━━━━━━━━━━━\n\n";
         $message .= "🗓 Bulan: *$bulanTeks*\n\n";
-        $message .= "📋 Berdasarkan catatan sistem, berikut adalah daftar warga yang masih memiliki sisa tagihan jimpitan:\n\n";
+        $message .= "📋 Berikut adalah rekapitulasi tagihan jimpitan warga:\n\n";
         
-        // Menggunakan blok monospace (```) agar font rata di WhatsApp
-        $message .= "\n";
+        $message .= "```\n";
         $no = 1;
-        foreach ($wargaBelumLunas as $w) {
+        foreach ($semuaWarga as $w) {
             // Nomor (3 karakter)
             $colNo = str_pad($no . ".", 3, " ", STR_PAD_RIGHT);
             
@@ -73,23 +75,30 @@ try {
             $namaPendek = substr($w['nama'], 0, 15);
             $colNama = str_pad($namaPendek, 15, " ", STR_PAD_RIGHT);
             
-            // Nominal (Rata Kanan)
-            $nominalFmt = number_format($w['sisa_tagihan'], 0, ',', '.');
-            $colNominal = str_pad($nominalFmt, 6, " ", STR_PAD_LEFT);
-            
-            $message .= $colNo . " " . $colNama . " Rp" . $colNominal . "\n";
+            if ($w['sisa_tagihan'] > 0) {
+                // Nominal (Rata Kanan)
+                $nominalFmt = number_format($w['sisa_tagihan'], 0, ',', '.');
+                $colNominal = str_pad($nominalFmt, 6, " ", STR_PAD_LEFT);
+                $message .= $colNo . " " . $colNama . " Rp" . $colNominal . "\n";
+            } else {
+                $message .= $colNo . " " . $colNama . "   LUNAS\n";
+            }
             $no++;
         }
-        $message .= "\n";
+        $message .= "```\n";
         
         $message .= "\n━━━━━━━━━━━━━━━━━━━━\n";
-        $message .= "💡 _Mohon untuk segera melunasi tagihan tersebut. Abaikan pesan ini jika merasa sudah membayar lunas. Terima kasih._\n\n";
+        if ($adaTunggakan) {
+            $message .= "💡 _Mohon untuk segera melunasi sisa tagihan tersebut. Abaikan pesan ini jika merasa sudah membayar lunas. Terima kasih._\n\n";
+        } else {
+            $message .= "✨ _Alhamdulillah, seluruh tagihan warga bulan $bulanTeks telah lunas. Terima kasih atas partisipasi aktif seluruh warga RT 07!_ ✨\n\n";
+        }
         $message .= "🙏🏻 *- Pengurus RT 07 -*";
     } else {
         $message = "🎉 *INFORMASI JIMPITAN*\n";
         $message .= "━━━━━━━━━━━━━━━━━━━━\n\n";
         $message .= "🗓 Bulan: *$bulanTeks*\n\n";
-        $message .= "✨ Alhamdulillah, seluruh tagihan jimpitan warga bulan $bulanTeks telah *LUNAS*. Terima kasih atas partisipasi aktif seluruh warga RT 07. ✨\n\n";
+        $message .= "Belum ada data warga di sistem.\n\n";
         $message .= "━━━━━━━━━━━━━━━━━━━━\n";
         $message .= "🙏🏻 *- Pengurus RT 07 -*";
     }
