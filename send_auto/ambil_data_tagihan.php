@@ -71,25 +71,18 @@ try {
         $message .= "\n";
         $no = 1;
         foreach ($semuaWarga as $w) {
-            // Nomor (3 karakter)
-            $colNo = str_pad($no . ".", 3, " ", STR_PAD_RIGHT);
-            
-            // Nama (Maksimal 15 karakter, sisanya dipotong)
-            $namaPendek = substr($w['nama'], 0, 15);
-            $colNama = str_pad($namaPendek, 15, " ", STR_PAD_RIGHT);
-            
+            $namaWarga = $w['nama'];
             $jmlScan = "(" . $w['scan_count'] . "x)";
             
             if ($w['sisa_tagihan'] > 0) {
-                // Nominal (Rata Kanan)
-                $nominalFmt = number_format($w['sisa_tagihan'], 0, ',', '.');
-                $colNominal = str_pad($nominalFmt, 6, " ", STR_PAD_LEFT);
-                $message .= $colNo . " " . $colNama . " Rp" . $colNominal . " " . $jmlScan . "\n";
+                $nominalFmt = "Rp " . number_format($w['sisa_tagihan'], 0, ',', '.');
+                $message .= $no . ". " . $namaWarga . " - " . $nominalFmt . " " . $jmlScan . "\n";
             } else {
-                $message .= $colNo . " " . $colNama . "   LUNAS " . $jmlScan . "\n";
+                $message .= $no . ". " . $namaWarga . " - *LUNAS* " . $jmlScan . "\n";
             }
             $no++;
         }
+        $message .= "\n";
         
         $message .= "\n━━━━━━━━━━━━━━━━━━━━\n";
         if ($adaTunggakan) {
