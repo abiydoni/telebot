@@ -78,14 +78,12 @@ try {
             $namaPendek = mb_substr($w['nama'], 0, 15);
             $colNama = $namaPendek . str_repeat(" ", 15 - mb_strlen($namaPendek));
             
-            $jmlScan = "(" . $w['scan_count'] . "x)";
-            
             if ($w['sisa_tagihan'] > 0) {
                 $nominalStr = number_format($w['sisa_tagihan'], 0, ',', '.');
                 $colNominal = str_pad($nominalStr, 6, " ", STR_PAD_LEFT);
-                $message .= $colNo . " " . $colNama . " Rp" . $colNominal . " " . $jmlScan . "\n";
+                $message .= $colNo . " " . $colNama . " Rp" . $colNominal . "\n";
             } else {
-                $message .= $colNo . " " . $colNama . "   LUNAS " . $jmlScan . "\n";
+                $message .= $colNo . " " . $colNama . "   LUNAS\n";
             }
             $no++;
         }
