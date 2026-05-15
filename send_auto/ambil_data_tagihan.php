@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/db.php';
 date_default_timezone_set('Asia/Jakarta');
 
 $lastMonth = new DateTime('first day of last month');
@@ -77,5 +78,10 @@ try {
 
 } catch (Exception $e) {
     die("ERROR Database: " . $e->getMessage() . "\n");
+}
+
+// Tampilkan pesan jika file ini diakses langsung dari browser
+if (basename($_SERVER['PHP_SELF']) === 'ambil_data_tagihan.php') {
+    echo "<pre>" . htmlspecialchars($message) . "</pre>";
 }
 ?>
