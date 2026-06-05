@@ -155,7 +155,7 @@ try {
 $message = $pesan;
 
 // Cek apakah di-include atau diakses langsung
-$isIncluded = (count(get_included_files()) > 1);
+$isIncluded = (basename(__FILE__) !== basename($_SERVER['SCRIPT_FILENAME']));
 
 if ($isIncluded) {
     // Jika di-include, jangan output, biarkan variabel $pesan (dan $message) tersedia
@@ -165,6 +165,10 @@ if ($isIncluded) {
     ob_end_clean();
     header('Content-Type: text/plain; charset=utf-8');
     header('Cache-Control: no-cache, must-revalidate');
-    echo $pesan;
+    if (empty($pesan)) {
+        echo "✅ Tidak ada data barang yang kedaluwarsa atau hampir kedaluwarsa saat ini.";
+    } else {
+        echo $pesan;
+    }
     exit;
 }
