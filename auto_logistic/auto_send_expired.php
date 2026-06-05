@@ -2,9 +2,8 @@
 
 include __DIR__ . '/get_konfigurasi.php';
 
-$groupId     = get_konfigurasi('wa_group_id');
-$gatewayBase = get_konfigurasi('api_url_group');
-$filePesan   = get_konfigurasi('report_expired') ?: 'ambil_data_expired.php';
+$groupId   = get_konfigurasi('wa_group_id');
+$filePesan = get_konfigurasi('report_expired') ?: 'ambil_data_expired.php';
 
 $enabled = strtolower((string) (get_konfigurasi('wa_notify_enabled') ?: 'true'));
 if (! in_array($enabled, ['1', 'true', 'yes', 'on'], true)) {
@@ -20,7 +19,7 @@ try {
     if ($chk->fetch()) {
         die("ℹ️  Sudah dikirim hari ini (wa_notification_log).\n");
     }
-} catch (Throwable) {
+} catch (Throwable $e) {
 }
 
 $message = '';
@@ -50,86 +49,64 @@ if (empty($message)) {
 if (empty($groupId)) {
     die("ERROR: wa_group_id kosong di tb_konfigurasi!\n");
 }
-if (empty($gatewayBase)) {
-    die("ERROR: api_url_group kosong di tb_konfigurasi!\n");
-}
-
-$gatewayBase = rtrim($gatewayBase, '/');
-if (strpos($gatewayBase, '/send-group-message') === false && strpos($gatewayBase, '.php') === false) {
-    $gatewayUrl = $gatewayBase . '/send-group-message';
-} else {
-    $gatewayUrl = $gatewayBase;
-}
-
-echo "ℹ️  Info: Menggunakan URL Gateway: $gatewayUrl\n";
-
-$data = [
-    'id'      => $groupId,
-    'message' => $message,
-];
-
-$maxRetries = 2;
-$attempt    = 0;
-$result     = false;
-$httpCode   = 0;
-$curlError  = '';
-$curlErrno  = 0;
-
-do {
-    $attempt++;
-    $ch = curl_init($gatewayUrl);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
-
-    $result    = curl_exec($ch);
-    $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
-    $curlErrno = curl_errno($ch);
-    curl_close($ch);
-
-    if (($curlErrno == 28 || $curlErrno == 6) && strpos($gatewayUrl, 'telebot.appsbee.my.id') !== false && $attempt < $maxRetries) {
-        echo "⚠️  WARNING: Gagal connect ke $gatewayUrl (Errno: $curlErrno). Retrying via localhost...\n";
-        $gatewayUrl = str_replace('https://telebot.appsbee.my.id', 'http://localhost:3000', $gatewayUrl);
-        continue;
-    }
-    break;
-} while ($attempt < $maxRetries);
 
 echo "=== Hasil Pengiriman Logistic Expired ===\n";
-echo "Group ID: $groupId\n";
-echo "URL Gateway: $gatewayUrl\n";
-echo "HTTP Code: $httpCode\n";
 
-if ($httpCode == 0) {
-    echo "❌ ERROR: Tidak bisa connect ke wagateway!\n";
-    echo 'CURL Error: ' . ($curlError ?: 'Connection failed') . "\n";
-    echo "CURL Errno: $curlErrno\n";
-} elseif ($httpCode == 200) {
-    $response = json_decode($result, true);
-    if (isset($response['status']) && $response['status']) {
-        echo "✅ SUCCESS: Pesan berhasil dikirim ke WhatsApp!\n";
+/**
+ * =========================================================================
+ * KIRIM VIA WHATSAPP (INTEGRASI WA-AKG NEW GATEWAY)
+ * Sesuai referensi dari auto_send_jaga.php
+ * =========================================================================
+ */
+echo "\n--- Mengirim via WA-AKG ---\n";
+$waAkgSession = 'Randuares-RT07'; 
+$waAkgJid     = $groupId; // Menggunakan ID Group WA dari konfigurasi DB
+$waAkgApiKey  = 'wag_OAbXNpfK7bI7xAtX217HWc8zdOKeJAiP';
+$waAkgUrl     = "https://wa-akg.aikeigroup.net/api/messages/$waAkgSession/" . urlencode($waAkgJid) . "/send";
 
-        try {
-            $ins = $pdo->prepare(
-                'INSERT INTO wa_notification_log (notify_type, notify_date, expired_count, warning_count, sent_at)
-                 VALUES (\'daily_expired\', CURDATE(), :exp, :warn, NOW())'
-            );
-            $ins->execute([
-                ':exp'  => isset($expiredCount) ? (int) $expiredCount : 0,
-                ':warn' => isset($warningCount) ? (int) $warningCount : 0,
-            ]);
-        } catch (Throwable $e) {
-            echo '⚠️  Gagal simpan log: ' . $e->getMessage() . "\n";
-        }
-    } else {
-        echo "⚠️  WARNING: HTTP 200 tapi status false\n";
-        echo 'Response: ' . substr((string) $result, 0, 500) . "\n";
+$waAkgData = [
+    'message' => [
+        'text' => $message
+    ]
+];
+
+$chAkg = curl_init($waAkgUrl);
+curl_setopt($chAkg, CURLOPT_POST, true);
+curl_setopt($chAkg, CURLOPT_POSTFIELDS, json_encode($waAkgData));
+curl_setopt($chAkg, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($chAkg, CURLOPT_HTTPHEADER, [
+    'Content-Type: application/json',
+    'X-API-Key: ' . $waAkgApiKey
+]);
+curl_setopt($chAkg, CURLOPT_TIMEOUT, 30);
+curl_setopt($chAkg, CURLOPT_SSL_VERIFYPEER, false);
+
+$akgResult = curl_exec($chAkg);
+$akgHttpCode = curl_getinfo($chAkg, CURLINFO_HTTP_CODE);
+curl_close($chAkg);
+
+echo "Group ID / JID: $waAkgJid\n";
+echo "URL Gateway: $waAkgUrl\n";
+echo "HTTP Code: $akgHttpCode\n";
+
+if ($akgHttpCode == 200) {
+    echo "✅ WA-AKG: Berhasil dikirim ke WhatsApp!\n";
+    
+    // Logging keberhasilan ke database agar tidak double send hari ini
+    try {
+        $ins = $pdo->prepare(
+            'INSERT INTO wa_notification_log (notify_type, notify_date, expired_count, warning_count, sent_at)
+             VALUES (\'daily_expired\', CURDATE(), :exp, :warn, NOW())'
+        );
+        $ins->execute([
+            ':exp'  => isset($expiredCount) ? (int) $expiredCount : 0,
+            ':warn' => isset($warningCount) ? (int) $warningCount : 0,
+        ]);
+        echo "ℹ️  Log pengiriman berhasil disimpan ke database.\n";
+    } catch (Throwable $e) {
+        echo '⚠️  Gagal simpan log ke database: ' . $e->getMessage() . "\n";
     }
 } else {
-    echo "❌ ERROR: HTTP $httpCode\n";
-    echo 'Response: ' . substr((string) $result, 0, 500) . "\n";
+    echo "❌ WA-AKG: Gagal (HTTP $akgHttpCode)\n";
+    echo "Response: $akgResult\n";
 }

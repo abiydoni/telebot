@@ -77,14 +77,17 @@ if (!function_exists('format_expired_line')) {
 
 try {
     $sql = "
-        SELECT items.id, items.code, items.name, items.unit, items.current_stock,
-               items.expired_date, warehouses.name AS warehouse_name
-        FROM items
+        SELECT items.id, items.code, items.name, items.unit, 
+               item_batches.stock AS current_stock,
+               item_batches.expired_date, warehouses.name AS warehouse_name
+        FROM item_batches
+        INNER JOIN items ON items.id = item_batches.item_id
         LEFT JOIN warehouses ON warehouses.id = items.warehouse_id
         WHERE items.is_active = 1
-          AND items.expired_date IS NOT NULL
-          AND items.expired_date <= :warning_end
-        ORDER BY items.expired_date ASC
+          AND item_batches.stock > 0
+          AND item_batches.expired_date IS NOT NULL
+          AND item_batches.expired_date <= :warning_end
+        ORDER BY item_batches.expired_date ASC
     ";
 
     $stmt = $pdo->prepare($sql);
