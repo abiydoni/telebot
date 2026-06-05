@@ -26,7 +26,7 @@ try {
 
 // Fungsi helper untuk escape markdown Telegram
 if (!function_exists('escapeMarkdown')) {
-    function escapeMarkdown($text) {
+    function escapeMarkdown(string $text): string {
         $chars = ['_', '*', '[', ']', '~', '`', '>', '#', '+', '=', '|', '{', '}', '!'];
         foreach ($chars as $char) {
             $text = str_replace($char, '\\' . $char, $text);

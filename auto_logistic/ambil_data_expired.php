@@ -33,7 +33,7 @@ try {
 
 // Fungsi helper untuk escape markdown Telegram
 if (!function_exists('escapeMarkdown')) {
-    function escapeMarkdown($text) {
+    function escapeMarkdown(string $text): string {
         // Escape karakter khusus markdown yang tidak ingin di-format
         // Jangan escape: titik (.), tanda kurung () karena digunakan untuk format normal
         $chars = ['_', '*', '[', ']', '~', '`', '>', '#', '+', '=', '|', '{', '}', '!'];
