@@ -11,16 +11,15 @@ if (! in_array($enabled, ['1', 'true', 'yes', 'on'], true)) {
 }
 
 try {
-    $pdo->query('SELECT 1 FROM wa_notification_log LIMIT 1');
-    $chk = $pdo->prepare(
-        "SELECT id FROM wa_notification_log WHERE notify_type = 'daily_lowstock' AND notify_date = CURDATE() LIMIT 1"
-    );
-    $chk->execute();
-    if ($chk->fetch()) {
-        die("ℹ️  Sudah dikirim hari ini (wa_notification_log).\n");
+    if (empty($_GET['force'])) {
+        $pdo->query("SELECT 1 FROM wa_notification_log LIMIT 1");
+        $chk = $pdo->prepare("SELECT id FROM wa_notification_log WHERE notify_type = 'daily_lowstock' AND notify_date = CURDATE() LIMIT 1");
+        $chk->execute();
+        if ($chk->fetch()) {
+            die("ℹ️  Sudah dikirim hari ini (wa_notification_log). Gunakan ?force=1 untuk memaksa kirim.\n");
+        }
     }
-} catch (Throwable $e) {
-}
+} catch (Throwable $e) {}
 
 $message = '';
 if (! empty($filePesan)) {
