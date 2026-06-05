@@ -67,7 +67,6 @@ if (!function_exists('format_expired_line')) {
         }
 
         $line  = "{$no}. *" . escapeMarkdown($name) . "*\n";
-        $line .= "   Kode: `" . escapeMarkdown($code) . "` | Gudang: " . escapeMarkdown($wh) . "\n";
         $line .= "   Stok: *" . escapeMarkdown((string)$stock) . "* " . escapeMarkdown($unit) . "\n";
         $line .= "   Exp: *" . escapeMarkdown($expFmt) . "*" . escapeMarkdown($dayLabel) . "\n\n";
 
