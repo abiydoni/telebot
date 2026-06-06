@@ -105,7 +105,7 @@ try {
 }
 
 // Cek apakah di-include atau diakses langsung
-$isIncluded = (count(get_included_files()) > 1);
+$isIncluded = !isset($_SERVER['REQUEST_METHOD']);
 
 if ($isIncluded) {
     // Jika di-include, jangan output, biarkan variabel $pesan tersedia
