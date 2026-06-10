@@ -56,43 +56,41 @@ echo "=== Hasil Pengiriman Logistic Expired ===\n";
 
 /**
  * =========================================================================
- * KIRIM VIA WHATSAPP (INTEGRASI WA-AKG NEW GATEWAY)
- * Sesuai referensi dari auto_send_jaga.php
+ * KIRIM VIA WHATSAPP (INTEGRASI APPSBEE GATEWAY)
  * =========================================================================
  */
-echo "\n--- Mengirim via WA-AKG ---\n";
-$waAkgSession = 'Randuares-RT07'; 
-$waAkgJid     = $groupId; // Menggunakan ID Group WA dari konfigurasi DB
-$waAkgApiKey  = 'wag_OAbXNpfK7bI7xAtX217HWc8zdOKeJAiP';
-$waAkgUrl     = "https://wa-akg.aikeigroup.net/api/messages/$waAkgSession/" . urlencode($waAkgJid) . "/send";
+echo "\n--- Mengirim via Appsbee WA ---\n";
+$targetNumber = $groupId; // Menggunakan ID Group WA dari konfigurasi DB
+$appsbeeUrl   = "https://wa-ab.appsbee.my.id/api/send-message";
+$appsbeeApiKey = "wa-3cf24d26d98c057fd68c5ea0531c3147";
 
-$waAkgData = [
-    'message' => [
-        'text' => $message
-    ]
+$appsbeeData = [
+    'sessionId' => 'appsbee',
+    'number'    => $targetNumber,
+    'message'   => $message
 ];
 
-$chAkg = curl_init($waAkgUrl);
-curl_setopt($chAkg, CURLOPT_POST, true);
-curl_setopt($chAkg, CURLOPT_POSTFIELDS, json_encode($waAkgData));
-curl_setopt($chAkg, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($chAkg, CURLOPT_HTTPHEADER, [
+$chAppsbee = curl_init($appsbeeUrl);
+curl_setopt($chAppsbee, CURLOPT_POST, true);
+curl_setopt($chAppsbee, CURLOPT_POSTFIELDS, json_encode($appsbeeData));
+curl_setopt($chAppsbee, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($chAppsbee, CURLOPT_HTTPHEADER, [
     'Content-Type: application/json',
-    'X-API-Key: ' . $waAkgApiKey
+    'x-api-key: ' . $appsbeeApiKey
 ]);
-curl_setopt($chAkg, CURLOPT_TIMEOUT, 30);
-curl_setopt($chAkg, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($chAppsbee, CURLOPT_TIMEOUT, 30);
+curl_setopt($chAppsbee, CURLOPT_SSL_VERIFYPEER, false);
 
-$akgResult = curl_exec($chAkg);
-$akgHttpCode = curl_getinfo($chAkg, CURLINFO_HTTP_CODE);
-curl_close($chAkg);
+$appsbeeResult = curl_exec($chAppsbee);
+$appsbeeHttpCode = curl_getinfo($chAppsbee, CURLINFO_HTTP_CODE);
+curl_close($chAppsbee);
 
-echo "Group ID / JID: $waAkgJid\n";
-echo "URL Gateway: $waAkgUrl\n";
-echo "HTTP Code: $akgHttpCode\n";
+echo "Group ID / JID: $targetNumber\n";
+echo "URL Gateway: $appsbeeUrl\n";
+echo "HTTP Code: $appsbeeHttpCode\n";
 
-if ($akgHttpCode == 200) {
-    echo "✅ WA-AKG: Berhasil dikirim ke WhatsApp!\n";
+if ($appsbeeHttpCode == 200) {
+    echo "✅ Appsbee WA: Berhasil dikirim ke WhatsApp!\n";
     
     // Logging keberhasilan ke database agar tidak double send hari ini
     try {
@@ -109,6 +107,6 @@ if ($akgHttpCode == 200) {
         echo '⚠️  Gagal simpan log ke database: ' . $e->getMessage() . "\n";
     }
 } else {
-    echo "❌ WA-AKG: Gagal (HTTP $akgHttpCode)\n";
-    echo "Response: $akgResult\n";
+    echo "❌ Appsbee WA: Gagal (HTTP $appsbeeHttpCode)\n";
+    echo "Response: $appsbeeResult\n";
 }

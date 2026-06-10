@@ -165,46 +165,44 @@ if ($httpCode == 0) {
 
 /**
  * =========================================================================
- * 3. KIRIM VIA WHATSAPP (INTEGRASI WA-AKG NEW GATEWAY)
- * DITAMBAHKAN PADA: 2026-03-20
+ * 3. KIRIM VIA WHATSAPP (INTEGRASI APPSBEE GATEWAY)
  * =========================================================================
  */
-echo "\n--- Mengirim via WA-AKG ---\n";
-$waAkgSession = 'Randuares-RT07'; 
-$waAkgJid     = '6285729705810-1505093181@g.us';
-$waAkgApiKey  = 'wag_OAbXNpfK7bI7xAtX217HWc8zdOKeJAiP';
-$waAkgUrl     = "https://wa-akg.aikeigroup.net/api/messages/$waAkgSession/" . urlencode($waAkgJid) . "/send";
+echo "\n--- Mengirim via Appsbee WA ---\n";
+$targetNumber = '6285729705810-1505093181@g.us';
+$appsbeeUrl   = "https://wa-ab.appsbee.my.id/api/send-message";
+$appsbeeApiKey = "wa-3cf24d26d98c057fd68c5ea0531c3147";
 
-$waAkgData = [
-    'message' => [
-        'text' => $message
-    ]
+$appsbeeData = [
+    'sessionId' => 'appsbee',
+    'number'    => $targetNumber,
+    'message'   => $message
 ];
 
-$chAkg = curl_init($waAkgUrl);
-curl_setopt($chAkg, CURLOPT_POST, true);
-curl_setopt($chAkg, CURLOPT_POSTFIELDS, json_encode($waAkgData));
-curl_setopt($chAkg, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($chAkg, CURLOPT_HTTPHEADER, [
+$chAppsbee = curl_init($appsbeeUrl);
+curl_setopt($chAppsbee, CURLOPT_POST, true);
+curl_setopt($chAppsbee, CURLOPT_POSTFIELDS, json_encode($appsbeeData));
+curl_setopt($chAppsbee, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($chAppsbee, CURLOPT_HTTPHEADER, [
     'Content-Type: application/json',
-    'X-API-Key: ' . $waAkgApiKey
+    'x-api-key: ' . $appsbeeApiKey
 ]);
-curl_setopt($chAkg, CURLOPT_TIMEOUT, 30);
-curl_setopt($chAkg, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($chAppsbee, CURLOPT_TIMEOUT, 30);
+curl_setopt($chAppsbee, CURLOPT_SSL_VERIFYPEER, false);
 
-$akgResult = curl_exec($chAkg);
-$akgHttpCode = curl_getinfo($chAkg, CURLINFO_HTTP_CODE);
-curl_close($chAkg);
+$appsbeeResult = curl_exec($chAppsbee);
+$appsbeeHttpCode = curl_getinfo($chAppsbee, CURLINFO_HTTP_CODE);
+curl_close($chAppsbee);
 
-if ($akgHttpCode == 200) {
-    echo "✅ WA-AKG: Berhasil dikirim!\n";
+if ($appsbeeHttpCode == 200) {
+    echo "✅ Appsbee WA: Berhasil dikirim!\n";
 } else {
-    echo "❌ WA-AKG: Gagal (HTTP $akgHttpCode)\n";
-    echo "Response: $akgResult\n";
+    echo "❌ Appsbee WA: Gagal (HTTP $appsbeeHttpCode)\n";
+    echo "Response: $appsbeeResult\n";
 }
 /**
  * =========================================================================
- * END INTEGRASI WA-AKG
+ * END INTEGRASI APPSBEE WA
  * =========================================================================
  */
 ?>
