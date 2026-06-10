@@ -162,7 +162,7 @@ if ($httpCode == 0) {
 echo "\n--- Mengirim via Appsbee WA ---\n";
 $targetNumber = '6285729705810-1505093181@g.us';
 $appsbeeUrl   = "https://wa-ab.appsbee.my.id/api/send-message";
-$appsbeeApiKey = "wa-3cf24d26d98c057fd68c5ea0531c3147";
+$appsbeeApiKey = "wa-69aa3dbf930020c93f34b83add6374e8";
 
 $appsbeeData = [
     'sessionId' => 'appsbee',
