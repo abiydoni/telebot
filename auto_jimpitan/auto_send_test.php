@@ -1,9 +1,7 @@
 <?php
-// Ambil konfigurasi dari database
-include __DIR__ . '/get_konfigurasi.php';
-
+// Ambil konfigurasi (hardcoded karena tabel konfigurasi tidak ada di DB baru)
 //120363398680818900@g.us
-$filePesan = get_konfigurasi('report3'); //ambil_data_ultah.php
+$filePesan = 'ambil_data_ultah.php'; //ambil_data_ultah.php
 
 // Ambil pesan dari file jika ada
 $message = '';

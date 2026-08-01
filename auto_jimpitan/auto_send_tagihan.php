@@ -1,8 +1,6 @@
 <?php
-// Ambil konfigurasi dari database
-include __DIR__ . '/get_konfigurasi.php';
-
-$filePesan = get_konfigurasi('report3');
+// Ambil konfigurasi (hardcoded karena tabel konfigurasi tidak ada di DB baru)
+$filePesan = 'ambil_data_tagihan.php';
 
 // Eksekusi dan siapkan variabel $message berisi tagihan
 include __DIR__ . '/ambil_data_tagihan.php';

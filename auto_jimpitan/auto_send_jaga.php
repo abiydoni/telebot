@@ -1,8 +1,6 @@
 <?php
-// Ambil konfigurasi dari database
-include __DIR__ . '/get_konfigurasi.php';
-
-$filePesan = get_konfigurasi('report2');
+// Ambil konfigurasi (hardcoded karena tabel konfigurasi tidak ada di DB baru)
+$filePesan = 'ambil_data_jaga.php';
 
 // Ambil pesan dari file jika ada
 $message = '';
