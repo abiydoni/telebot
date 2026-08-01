@@ -10,7 +10,7 @@
  * @param string $senderName Nama pengirim (default: Pengurus RT)
  * @return bool
  */
-function sendToGroupChat($pdo, $message, $senderName = 'Pengurus RT') {
+function sendToGroupChat($pdo, $message, $senderName = 'appsbee') {
     try {
         $msgId = 'msg_' . str_replace('-', '', sprintf(
             '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
@@ -40,25 +40,24 @@ function sendToGroupChat($pdo, $message, $senderName = 'Pengurus RT') {
 
         echo "✅ Chat Group: Pesan berhasil disimpan ke chat_messages (ID: $msgId)\n";
 
-        // Tandai semua pesan group sebagai belum dibaca (isRead=0) sudah otomatis
+        // Trigger push notification FCM via endpoint /chat/system-send di jimpitan app
+        // Endpoint ini akan membaca fcm_subscriptions dan mengirim push ke semua user
+        $systemSendUrl = 'https://jimpitan.appsbee.my.id/chat/system-send';
+        $systemKey     = 'jimpitan_secret_batch_2024';
 
-        // Trigger push notification via FCM API (jika ada endpoint)
-        // Endpoint API notifikasi dari appsbeem multi-village
-        $fcmApiUrl = 'https://jimpitan.appsbee.my.id/api/v2/chat/notify-group';
-        $fcmApiKey = 'jimpitan_secret_batch_2024';
+        $notifData = [
+            'key'         => $systemKey,
+            'receiver_id' => 'GROUP_ALL',
+            'message'     => mb_substr($message, 0, 200),
+            'sender_id'   => 'SYSTEM',
+            'sender_name' => $senderName,
+        ];
 
-        $chFcm = curl_init($fcmApiUrl);
+        $chFcm = curl_init($systemSendUrl);
         curl_setopt($chFcm, CURLOPT_POST, true);
-        curl_setopt($chFcm, CURLOPT_POSTFIELDS, json_encode([
-            'key'        => $fcmApiKey,
-            'villageId'  => 'village_001',
-            'roomId'     => 'GROUP_village_001',
-            'message'    => mb_substr($message, 0, 150),
-            'senderName' => $senderName,
-        ]));
+        curl_setopt($chFcm, CURLOPT_POSTFIELDS, $notifData); // form-encoded bukan JSON
         curl_setopt($chFcm, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($chFcm, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($chFcm, CURLOPT_TIMEOUT, 10);
+        curl_setopt($chFcm, CURLOPT_TIMEOUT, 15);
         curl_setopt($chFcm, CURLOPT_SSL_VERIFYPEER, false);
 
         $fcmResult   = curl_exec($chFcm);
@@ -66,7 +65,12 @@ function sendToGroupChat($pdo, $message, $senderName = 'Pengurus RT') {
         curl_close($chFcm);
 
         if ($fcmHttpCode == 200) {
-            echo "✅ FCM Notifikasi: Berhasil dikirim!\n";
+            $fcmResp = json_decode($fcmResult, true);
+            if (isset($fcmResp['status']) && $fcmResp['status'] === 'success') {
+                echo "✅ FCM Notifikasi: Berhasil dikirim!\n";
+            } else {
+                echo "⚠️  FCM Notifikasi: HTTP 200 tapi status tidak success. Response: " . substr($fcmResult, 0, 200) . "\n";
+            }
         } else {
             echo "⚠️  FCM Notifikasi: Gagal (HTTP $fcmHttpCode). Pesan tetap tersimpan di chat.\n";
         }
