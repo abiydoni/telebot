@@ -17,10 +17,10 @@ try {
     }
     
     // 1. Dapatkan tarif
-    $stmt = $pdo->prepare("SELECT tarif FROM tb_tarif WHERE kode_tarif = 'TR001' LIMIT 1");
+    $stmt = $pdo->prepare("SELECT amount FROM tariffs WHERE name = 'Jimpitan' AND villageId = 'village_001' LIMIT 1");
     $stmt->execute();
     $tarifRow = $stmt->fetch();
-    $tarif = $tarifRow ? (int)$tarifRow['tarif'] : 500;
+    $tarif = $tarifRow ? (int)$tarifRow['amount'] : 500;
     
     // Total tagihan seharusnya selama sebulan
     $totalTagihanSeharusnya = $tarif * $daysInMonth;
