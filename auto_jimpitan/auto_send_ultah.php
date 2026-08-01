@@ -2,6 +2,10 @@
 // Ambil konfigurasi (hardcoded karena tabel konfigurasi tidak ada di DB baru)
 $filePesan = 'ambil_data_ultah.php';
 
+// Helper kirim ke chat group
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/send_to_chat.php';
+
 // Ambil pesan dari file jika ada
 $message = '';
 if (!empty($filePesan)) {
@@ -90,9 +94,14 @@ if ($appsbeeHttpCode == 200) {
     echo "❌ Appsbee WA: Gagal (HTTP $appsbeeHttpCode)\n";
     echo "Response: $appsbeeResult\n";
 }
+
 /**
  * =========================================================================
- * END INTEGRASI APPSBEE WA
+ * KIRIM KE CHAT GROUP WARGA (village_001)
  * =========================================================================
  */
+echo "\n--- Mengirim ke Chat Grup Warga ---\n";
+if (!empty($message)) {
+    sendToGroupChat($pdo, $message, 'Pengurus RT');
+}
 ?>

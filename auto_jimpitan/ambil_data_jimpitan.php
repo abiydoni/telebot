@@ -108,12 +108,20 @@ try {
     // Tambahkan data petugas jimpitan (scan > 0) dari tabel report
     $stmt_petugas = $pdo->prepare("
         SELECT 
-            scannedBy AS kode_u, 
-            scannedByName AS nama_u, 
+            CASE 
+                WHEN type = 'JIMPITAN' THEN scannedBy
+                ELSE type
+            END AS kode_u, 
+            CASE 
+                WHEN type = 'JIMPITAN' THEN scannedByName
+                WHEN type = 'MANUAL' THEN 'Manual'
+                WHEN type = 'TAGIHAN' THEN 'Tagihan'
+                ELSE type
+            END AS nama_u, 
             COUNT(*) as jumlah_scan
         FROM jimpitan_history
         WHERE date = CURDATE() - INTERVAL 1 DAY AND villageId = 'village_001'
-        GROUP BY scannedBy, scannedByName
+        GROUP BY kode_u, nama_u
         HAVING jumlah_scan > 0
         ORDER BY jumlah_scan DESC
     ");
