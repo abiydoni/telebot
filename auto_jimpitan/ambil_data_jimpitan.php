@@ -1,0 +1,177 @@
+<?php
+// Pastikan tidak ada output sebelum header
+ob_start();
+
+require_once __DIR__ . '/db.php';
+date_default_timezone_set('Asia/Jakarta');
+
+// Terjemahan hari dan bulan ke Bahasa Indonesia
+$hariIndo = [
+    'Sunday' => 'Minggu',
+    'Monday' => 'Senin',
+    'Tuesday' => 'Selasa',
+    'Wednesday' => 'Rabu',
+    'Thursday' => 'Kamis',
+    'Friday' => 'Jumat',
+    'Saturday' => 'Sabtu',
+];
+
+$bulanIndo = [
+    'January' => 'Januari',
+    'February' => 'Februari',
+    'March' => 'Maret',
+    'April' => 'April',
+    'May' => 'Mei',
+    'June' => 'Juni',
+    'July' => 'Juli',
+    'August' => 'Agustus',
+    'September' => 'September',
+    'October' => 'Oktober',
+    'November' => 'November',
+    'December' => 'Desember',
+];
+
+try {
+    // Ambil data KK yang nominal-nya 0 pada hari kemarin
+    $stmt = $pdo->prepare("
+    SELECT 
+    m.uniqueCode AS code_id, 
+    m.name AS kk_name, 
+    COALESCE(SUM(r.amount), 0) AS jumlah_nominal
+    FROM users m
+    LEFT JOIN jimpitan_history r ON m.uniqueCode = r.kkId 
+    AND r.date = CURDATE() - INTERVAL 1 DAY AND r.villageId = 'village_001'
+    WHERE m.statusHubungan = 'Kepala Keluarga' AND m.villageId = 'village_001'
+    GROUP BY m.uniqueCode, m.name
+    ORDER BY m.uniqueCode ASC;
+    ");
+    $stmt->execute();
+    $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $total_nominal = array_sum(array_column($data, 'jumlah_nominal'));
+
+    $kemarin = new DateTime('yesterday');
+    $tanggal = $kemarin->format('Y-m-d');
+    $hariEng = $kemarin->format('l');
+    $hariInd = isset($hariIndo[$hariEng]) ? $hariIndo[$hariEng] : $hariEng;
+    $tgl = $kemarin->format('j');
+    $bulanEng = $kemarin->format('F');
+    $bulanInd = isset($bulanIndo[$bulanEng]) ? $bulanIndo[$bulanEng] : $bulanEng;
+    $tahun = $kemarin->format('Y');
+
+    // Fungsi helper untuk escape markdown Telegram
+    function escapeMarkdown($text) {
+        // Escape karakter khusus markdown yang tidak ingin di-format
+        // Jangan escape: titik (.), tanda kurung () karena digunakan untuk format normal
+        $chars = ['_', '*', '[', ']', '~', '`', '>', '#', '+', '=', '|', '{', '}', '!'];
+        foreach ($chars as $char) {
+            $text = str_replace($char, '\\' . $char, $text);
+        }
+        // Escape minus hanya jika bukan bagian dari angka negatif
+        $text = preg_replace('/(?<!\d)-(?!\d)/', '\\-', $text);
+        return $text;
+    }
+
+    $tanggalLengkap = "$hariInd, $tgl $bulanInd $tahun";
+    
+    // Bangun pesan WhatsApp / Telegram
+    $pesan = "📊 *REPORT JIMPITAN*\n";
+    $pesan .= "━━━━━━━━━━━━━━━━━━━━\n";
+    $pesan .= "📅 *" . escapeMarkdown($tanggalLengkap) . "* _(Semalam)_\n\n";
+    $pesan .= "💰 *Total Jimpitan:*";
+    $pesan .= " Rp. " . number_format($total_nominal, 0, ',', '.') . "\n\n";
+    $pesan .= "━━━━━━━━━━━━━━━━━━━━\n";
+    $pesan .= "📋 *Jimpitan yang Kosong:*\n\n";
+
+    if ($data && count($data) > 0) {
+        $no = 1;
+        $adaKosong = false;
+        foreach ($data as $user) {
+            if ((int)$user['jumlah_nominal'] === 0) {
+                $code_id = htmlspecialchars($user['code_id'], ENT_QUOTES, 'UTF-8');
+                $kk_name = htmlspecialchars($user['kk_name'], ENT_QUOTES, 'UTF-8');
+                $pesan .= $no . ". *" . escapeMarkdown($code_id) . "* - " . escapeMarkdown($kk_name) . "\n";
+                $no++;
+                $adaKosong = true;
+            }
+        }
+
+        if (!$adaKosong) {
+            $pesan .= "✅ *Semua KK sudah menyetor jimpitan.*\n";
+        }
+    } else {
+        $pesan .= "❌ " . escapeMarkdown("Tidak ada data tersedia.") . "\n";
+    }
+    
+    $pesan .= "\n━━━━━━━━━━━━━━━━━━━━\n";
+    
+    // Tambahkan data petugas jimpitan (scan > 0) dari tabel report
+    $stmt_petugas = $pdo->prepare("
+        SELECT 
+            scannedBy AS kode_u, 
+            scannedByName AS nama_u, 
+            COUNT(*) as jumlah_scan
+        FROM jimpitan_history
+        WHERE date = CURDATE() - INTERVAL 1 DAY AND villageId = 'village_001'
+        GROUP BY scannedBy, scannedByName
+        HAVING jumlah_scan > 0
+        ORDER BY jumlah_scan DESC
+    ");
+    $stmt_petugas->execute();
+    $data_petugas = $stmt_petugas->fetchAll(PDO::FETCH_ASSOC);
+
+    if ($data_petugas && count($data_petugas) > 0) {
+        $pesan .= "👤 *Petugas Jimpitan:*\n\n";
+        $no_petugas = 1;
+        foreach ($data_petugas as $petugas) {
+            $nama_u = htmlspecialchars($petugas['nama_u'], ENT_QUOTES, 'UTF-8');
+            $jumlah_scan = (int)$petugas['jumlah_scan'];
+            $pesan .= $no_petugas . ". *" . escapeMarkdown($nama_u) . "*";
+            $pesan .= "   ➤ Scan: " . $jumlah_scan . " kali\n";
+            $no_petugas++;
+        }
+    } else {
+        $pesan .= "👤 " . escapeMarkdown("Tidak ada data petugas jimpitan.") . "\n";
+    }
+    
+    $pesan .= "━━━━━━━━━━━━━━━━━━━━\n";
+    $pesan .= "ℹ️ *Info Aplikasi:*\n";
+    $pesan .= "Warga dapat mengakses aplikasi:\n";
+    $pesan .= "https://jimpitan.appsbee.my.id\n";
+    $pesan .= "👤 Setiap KK memiliki 1 User dan 1 Password\n";
+    $pesan .= "\n━━━━━━━━━━━━━━━━━━━━\n";
+    $pesan .= "🌟 *Terima kasih atas perhatiannya*\n";
+    $pesan .= "📞 Info lebih lanjut hubungi *ADMIN*\n";
+    $pesan .= "\n_Pesan Otomatis dari System_";
+
+} catch (PDOException $e) {
+    // Error handling untuk database
+    $pesan = "❌ *Error*\n\n";
+    $pesan .= "Terjadi kesalahan saat mengambil data jimpitan.\n";
+    $pesan .= "Silakan coba lagi nanti.\n\n";
+    $pesan .= "_- Pesan Otomatis dari System -_";
+    error_log("Error in ambil_data_jimpitan.php: " . $e->getMessage());
+} catch (Exception $e) {
+    // Error handling umum
+    $pesan = "❌ *Error*\n\n";
+    $pesan .= "Terjadi kesalahan pada sistem.\n";
+    $pesan .= "Silakan coba lagi nanti.\n\n";
+    $pesan .= "_- Pesan Otomatis dari System -_";
+    error_log("Error in ambil_data_jimpitan.php: " . $e->getMessage());
+}
+
+// Cek apakah di-include atau diakses langsung
+$included_files = get_included_files();
+$isIncluded = (realpath($included_files[0]) !== realpath(__FILE__));
+
+if ($isIncluded) {
+    // Jika di-include, jangan output, biarkan variabel $pesan tersedia
+    ob_end_clean();
+} else {
+    // Jika diakses langsung via HTTP, output seperti biasa
+    ob_end_clean();
+    header('Content-Type: text/plain; charset=utf-8');
+    header('Cache-Control: no-cache, must-revalidate');
+    echo $pesan;
+    exit;
+}
