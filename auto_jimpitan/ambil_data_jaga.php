@@ -42,7 +42,7 @@ try {
 
     // Ambil data dari tabel schedules
     $stmt = $pdo->prepare("SELECT namaLengkap AS name FROM schedules WHERE hari = :shift AND villageId = 'village_001'");
-    $stmt->execute(['shift' => $hariEng]);
+    $stmt->execute(['shift' => $hariInd]);
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Fungsi helper untuk escape markdown Telegram

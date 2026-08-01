@@ -34,7 +34,7 @@ try {
 
     // Ambil data jaga dari DB berdasarkan shift
     $stmt = $pdo->prepare("SELECT namaLengkap AS name FROM schedules WHERE hari = :hari AND villageId = 'village_001' ORDER BY namaLengkap ASC");
-    $stmt->execute(['hari' => $hari]);
+    $stmt->execute(['hari' => $hariInd]);
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Fungsi helper untuk escape markdown Telegram
