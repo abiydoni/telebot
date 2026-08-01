@@ -55,7 +55,7 @@ function sendToGroupChat($pdo, $message, $senderName = 'appsbee') {
 
         $chFcm = curl_init($systemSendUrl);
         curl_setopt($chFcm, CURLOPT_POST, true);
-        curl_setopt($chFcm, CURLOPT_POSTFIELDS, $notifData); // form-encoded bukan JSON
+        curl_setopt($chFcm, CURLOPT_POSTFIELDS, http_build_query($notifData)); // Send as application/x-www-form-urlencoded
         curl_setopt($chFcm, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($chFcm, CURLOPT_TIMEOUT, 15);
         curl_setopt($chFcm, CURLOPT_SSL_VERIFYPEER, false);

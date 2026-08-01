@@ -74,6 +74,6 @@ if ($appsbeeHttpCode == 200) {
  */
 echo "\n--- Mengirim ke Chat Grup Warga ---\n";
 if (!empty($message)) {
-    sendToGroupChat($pdo, $message, 'Pengurus RT');
+    sendToGroupChat($pdo, $message, 'appsbee');
 }
 ?>
