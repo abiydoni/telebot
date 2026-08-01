@@ -56,3 +56,4 @@ Thumbs.db
 *.seed
 .DS_Store
 desktop.ini
+serviceAccountKey.json

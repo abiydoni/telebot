@@ -40,40 +40,9 @@ function sendToGroupChat($pdo, $message, $senderName = 'appsbee') {
 
         echo "✅ Chat Group: Pesan berhasil disimpan ke chat_messages (ID: $msgId)\n";
 
-        // Trigger push notification FCM via endpoint /chat/system-send di jimpitan app
-        // Endpoint ini akan membaca fcm_subscriptions dan mengirim push ke semua user
-        $systemSendUrl = 'https://jimpitan.appsbee.my.id/chat/system-send';
-        $systemKey     = 'jimpitan_secret_batch_2024';
-
-        $notifData = [
-            'key'         => $systemKey,
-            'receiver_id' => 'GROUP_ALL',
-            'message'     => mb_substr($message, 0, 200),
-            'sender_id'   => 'SYSTEM',
-            'sender_name' => $senderName,
-        ];
-
-        $chFcm = curl_init($systemSendUrl);
-        curl_setopt($chFcm, CURLOPT_POST, true);
-        curl_setopt($chFcm, CURLOPT_POSTFIELDS, http_build_query($notifData)); // Send as application/x-www-form-urlencoded
-        curl_setopt($chFcm, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($chFcm, CURLOPT_TIMEOUT, 15);
-        curl_setopt($chFcm, CURLOPT_SSL_VERIFYPEER, false);
-
-        $fcmResult   = curl_exec($chFcm);
-        $fcmHttpCode = curl_getinfo($chFcm, CURLINFO_HTTP_CODE);
-        curl_close($chFcm);
-
-        if ($fcmHttpCode == 200) {
-            $fcmResp = json_decode($fcmResult, true);
-            if (isset($fcmResp['status']) && $fcmResp['status'] === 'success') {
-                echo "✅ FCM Notifikasi: Berhasil dikirim!\n";
-            } else {
-                echo "⚠️  FCM Notifikasi: HTTP 200 tapi status tidak success. Response: " . substr($fcmResult, 0, 200) . "\n";
-            }
-        } else {
-            echo "⚠️  FCM Notifikasi: Gagal (HTTP $fcmHttpCode). Pesan tetap tersimpan di chat.\n";
-        }
+        // Trigger push notification FCM secara langsung menggunakan service account json (Firebase V1 HTTP API)
+        require_once __DIR__ . '/fcm_helper.php';
+        sendFCMNotificationNew($pdo, $message, $senderName);
 
         return true;
 
