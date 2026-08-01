@@ -157,7 +157,10 @@ function sendFCMNotificationNew($pdo, $messageText, $senderName, $villageId = 'v
             if ($httpCode === 200) {
                 $successCount++;
             } else {
-                echo "⚠️  FCM Error for token $token: HTTP $httpCode - $response\n";
+                // Sembunyikan error panjang lebar, tampilkan ringkasannya saja atau sembunyikan sepenuhnya
+                $respData = json_decode($response, true);
+                $errMsg = $respData['error']['message'] ?? 'Unknown Error';
+                // echo "⚠️  FCM Gagal untuk salah satu token (Mungkin token sudah kadaluarsa/tidak valid)\n";
             }
         }
 
