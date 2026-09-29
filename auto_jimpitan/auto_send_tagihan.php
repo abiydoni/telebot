@@ -1,4 +1,8 @@
 <?php
+// Atur batas waktu eksekusi agar tidak terkena timeout di cron/server
+@ini_set('max_execution_time', '300');
+@set_time_limit(300);
+
 // Ambil konfigurasi (hardcoded karena tabel konfigurasi tidak ada di DB baru)
 $filePesan = 'ambil_data_tagihan.php';
 
@@ -20,10 +24,24 @@ if (!isset($pdo)) {
 }
 
 if (empty($message)) {
-    $message = 'Info Ultah - ' . date('Y-m-d H:i:s');
+    $message = 'Info Tagihan - ' . date('Y-m-d H:i:s');
 }
 
+/**
+ * =========================================================================
+ * 1. KIRIM KE CHAT GROUP WARGA (village_001) - INPUT KE TABEL chat_messages
+ * =========================================================================
+ */
+echo "\n--- Mengirim ke Chat Grup Warga (Database & Notifikasi) ---\n";
+if (!empty($message)) {
+    sendToGroupChat($pdo, $message, 'appsbee');
+}
 
+/**
+ * =========================================================================
+ * 2. KIRIM VIA WHATSAPP (APPSBEE WA)
+ * =========================================================================
+ */
 echo "\n--- Mengirim via Appsbee WA ---\n";
 $targetNumber = '120363398680818900@g.us';
 //$targetNumber = '6285729705810-1505093181@g.us';
@@ -45,6 +63,7 @@ curl_setopt($chAppsbee, CURLOPT_HTTPHEADER, [
     'x-api-key: ' . $appsbeeApiKey
 ]);
 curl_setopt($chAppsbee, CURLOPT_TIMEOUT, 30);
+curl_setopt($chAppsbee, CURLOPT_CONNECTTIMEOUT, 10);
 curl_setopt($chAppsbee, CURLOPT_SSL_VERIFYPEER, false);
 
 $appsbeeResult = curl_exec($chAppsbee);
@@ -57,14 +76,5 @@ if ($appsbeeHttpCode == 200) {
     echo "❌ Appsbee WA: Gagal (HTTP $appsbeeHttpCode)\n";
     echo "Response: $appsbeeResult\n";
 }
-
-/**
- * =========================================================================
- * KIRIM KE CHAT GROUP WARGA (village_001)
- * =========================================================================
- */
-echo "\n--- Mengirim ke Chat Grup Warga ---\n";
-if (!empty($message)) {
-    sendToGroupChat($pdo, $message, 'appsbee');
-}
 ?>
+

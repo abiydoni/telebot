@@ -28,6 +28,8 @@ function getFCMAccessTokenNew() {
     curl_setopt($chTime, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($chTime, CURLOPT_HEADER, true);
     curl_setopt($chTime, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($chTime, CURLOPT_TIMEOUT, 10);
+    curl_setopt($chTime, CURLOPT_CONNECTTIMEOUT, 5);
     $responseHeader = curl_exec($chTime);
     curl_close($chTime);
 
@@ -62,6 +64,8 @@ function getFCMAccessTokenNew() {
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
         'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
         'assertion' => $jwt
@@ -149,6 +153,9 @@ function sendFCMNotificationNew($pdo, $messageText, $senderName, $villageId = 'v
             ]);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);

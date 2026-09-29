@@ -40,14 +40,19 @@ function sendToGroupChat($pdo, $message, $senderName = 'appsbee') {
 
         echo "✅ Chat Group: Pesan berhasil disimpan ke chat_messages (ID: $msgId)\n";
 
-        // Trigger push notification FCM secara langsung menggunakan service account json (Firebase V1 HTTP API)
-        require_once __DIR__ . '/fcm_helper.php';
-        sendFCMNotificationNew($pdo, $message, $senderName);
-
-        return true;
-
     } catch (Exception $e) {
         echo "❌ Chat Group Error: " . $e->getMessage() . "\n";
         return false;
     }
+
+    // Trigger push notification FCM dipisahkan dalam try-catch agar jika FCM gagal/timeout, status insert DB tetap sukses
+    try {
+        require_once __DIR__ . '/fcm_helper.php';
+        sendFCMNotificationNew($pdo, $message, $senderName);
+    } catch (Throwable $e) {
+        echo "⚠️  FCM Error: " . $e->getMessage() . "\n";
+    }
+
+    return true;
 }
+
