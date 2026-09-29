@@ -144,9 +144,9 @@ try {
     
     $pesan .= "━━━━━━━━━━━━━━━━━━━━\n";
     $pesan .= "ℹ️ *Info Aplikasi:*\n";
-    $pesan .= "Warga dapat mengakses aplikasi:\n";
-    $pesan .= "https://jimpitan.appsbee.my.id\n";
-    $pesan .= "👤 Setiap KK memiliki 1 User dan 1 Password\n";
+    $pesan .= "🕸️ *Link download apk:*\n";
+    $pesan .= "https://drive.google.com/file/d/1Rrvp_VnajunNz6hnR_ffNRdcKrOoyUdX/view?usp=sharing\n\n";
+    $pesan .= "👤 Silahkan login menggunakan akun gmail masing-masing\n";
     $pesan .= "\n━━━━━━━━━━━━━━━━━━━━\n";
     $pesan .= "🌟 *Terima kasih atas perhatiannya*\n";
     $pesan .= "📞 Info lebih lanjut hubungi *ADMIN*\n";
