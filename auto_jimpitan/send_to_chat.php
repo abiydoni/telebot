@@ -10,8 +10,13 @@
  * @param string $senderName Nama pengirim (default: Pengurus RT)
  * @return bool
  */
-function sendToGroupChat($pdo, $message, $senderName = 'appsbee') {
+function sendToGroupChat($pdo, $message, $senderName = 'appsbee', $villageId = 'village_001') {
     try {
+        if (empty($villageId)) {
+            $villageId = 'village_001';
+        }
+        $roomId = 'GROUP_' . $villageId;
+
         $msgId = 'msg_' . str_replace('-', '', sprintf(
             '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
             mt_rand(0, 0xffff), mt_rand(0, 0xffff),
@@ -27,18 +32,20 @@ function sendToGroupChat($pdo, $message, $senderName = 'appsbee') {
             INSERT INTO chat_messages 
                 (id, senderUid, receiverUid, message, isRead, villageId, createdAt, updatedAt, roomId, senderName, isDeleted, isEdited)
             VALUES 
-                (:id, 'SYSTEM', NULL, :message, 0, 'village_001', :createdAt, :updatedAt, 'GROUP_village_001', :senderName, 0, 0)
+                (:id, 'SYSTEM', NULL, :message, 0, :villageId, :createdAt, :updatedAt, :roomId, :senderName, 0, 0)
         ");
 
         $stmt->execute([
             ':id'         => $msgId,
             ':message'    => $message,
+            ':villageId'  => $villageId,
             ':createdAt'  => $now,
             ':updatedAt'  => $now,
+            ':roomId'     => $roomId,
             ':senderName' => $senderName,
         ]);
 
-        echo "✅ Chat Group: Pesan berhasil disimpan ke chat_messages (ID: $msgId)\n";
+        echo "✅ Chat Group: Pesan berhasil disimpan ke chat_messages (ID: $msgId, Room: $roomId)\n";
 
     } catch (Exception $e) {
         echo "❌ Chat Group Error: " . $e->getMessage() . "\n";
@@ -48,7 +55,7 @@ function sendToGroupChat($pdo, $message, $senderName = 'appsbee') {
     // Trigger push notification FCM dipisahkan dalam try-catch agar jika FCM gagal/timeout, status insert DB tetap sukses
     try {
         require_once __DIR__ . '/fcm_helper.php';
-        sendFCMNotificationNew($pdo, $message, $senderName);
+        sendFCMNotificationNew($pdo, $message, $senderName, $villageId, $roomId);
     } catch (Throwable $e) {
         echo "⚠️  FCM Error: " . $e->getMessage() . "\n";
     }

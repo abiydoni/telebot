@@ -31,38 +31,50 @@ if (empty($message)) {
 }
 
 
+// Helper koneksi DB & konfigurasi database
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/get_konfigurasi.php';
+
+// Ambil konfigurasi WhatsApp Group dari tabel system_settings di database appsbeem_jimpitan_admin
+$waConfig      = get_wa_group_settings();
+$targetNumber  = $waConfig['targetNumber'];
+$appsbeeUrl    = $waConfig['appsbeeUrl'];
+$appsbeeApiKey = $waConfig['appsbeeApiKey'];
+$sessionId     = $waConfig['sessionId'];
+$villageId     = $waConfig['villageId'];
+$isWaEnabled   = $waConfig['isEnabled'];
+
 echo "\n--- Mengirim via Appsbee WA ---\n";
-$targetNumber = '120363398680818900@g.us';
-//$targetNumber = '6285729705810-1505093181@g.us';
-$appsbeeUrl   = "https://wa-ab.appsbee.my.id/api/send-message";
-$appsbeeApiKey = "wa-69aa3dbf930020c93f34b83add6374e8";
-
-$appsbeeData = [
-    'sessionId' => 'appsbee',
-    'number'    => $targetNumber,
-    'message'   => $message
-];
-
-$chAppsbee = curl_init($appsbeeUrl);
-curl_setopt($chAppsbee, CURLOPT_POST, true);
-curl_setopt($chAppsbee, CURLOPT_POSTFIELDS, json_encode($appsbeeData));
-curl_setopt($chAppsbee, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($chAppsbee, CURLOPT_HTTPHEADER, [
-    'Content-Type: application/json',
-    'x-api-key: ' . $appsbeeApiKey
-]);
-curl_setopt($chAppsbee, CURLOPT_TIMEOUT, 30);
-curl_setopt($chAppsbee, CURLOPT_SSL_VERIFYPEER, false);
-
-$appsbeeResult = curl_exec($chAppsbee);
-$appsbeeHttpCode = curl_getinfo($chAppsbee, CURLINFO_HTTP_CODE);
-curl_close($chAppsbee);
-
-if ($appsbeeHttpCode == 200) {
-    echo "✅ Appsbee WA: Berhasil dikirim!\n";
+if (!$isWaEnabled) {
+    echo "ℹ️  Pengiriman pesan WhatsApp dilewati (Dinonaktifkan di Pengaturan Sistem).\n";
 } else {
-    echo "❌ Appsbee WA: Gagal (HTTP $appsbeeHttpCode)\n";
-    echo "Response: $appsbeeResult\n";
+    $appsbeeData = [
+        'sessionId' => $sessionId,
+        'number'    => $targetNumber,
+        'message'   => $message
+    ];
+
+    $chAppsbee = curl_init($appsbeeUrl);
+    curl_setopt($chAppsbee, CURLOPT_POST, true);
+    curl_setopt($chAppsbee, CURLOPT_POSTFIELDS, json_encode($appsbeeData));
+    curl_setopt($chAppsbee, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($chAppsbee, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'x-api-key: ' . $appsbeeApiKey
+    ]);
+    curl_setopt($chAppsbee, CURLOPT_TIMEOUT, 30);
+    curl_setopt($chAppsbee, CURLOPT_SSL_VERIFYPEER, false);
+
+    $appsbeeResult = curl_exec($chAppsbee);
+    $appsbeeHttpCode = curl_getinfo($chAppsbee, CURLINFO_HTTP_CODE);
+    curl_close($chAppsbee);
+
+    if ($appsbeeHttpCode == 200) {
+        echo "✅ Appsbee WA: Berhasil dikirim ke $targetNumber!\n";
+    } else {
+        echo "❌ Appsbee WA: Gagal (HTTP $appsbeeHttpCode)\n";
+        echo "Response: $appsbeeResult\n";
+    }
 }
 /**
  * =========================================================================
