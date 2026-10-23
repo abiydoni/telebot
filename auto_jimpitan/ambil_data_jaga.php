@@ -78,8 +78,8 @@ try {
     $pesan .= "\n━━━━━━━━━━━━━━━━━━━━\n";
     $pesan .= "🌟 *Selamat melaksanakan tugas*\n";
     $pesan .= "🏡 " . escapeMarkdown("RT.07 RW.01") . "\n\n";
-    $pesan .= "🕸️ *Link download apk:*\n";
-    $pesan .= "https://drive.google.com/file/d/1Rrvp_VnajunNz6hnR_ffNRdcKrOoyUdX/view?usp=sharing\n\n";
+    $pesan .= "📲 *Link Download (Play Store):*\n";
+    $pesan .= "https://play.google.com/store/apps/details?id=jimpitan.appsbee.my.id\n\n";
     $pesan .= "⚠️ *PENTING - WAJIB SCAN QR*\n";
     $pesan .= "Dihimbau kepada petugas jimpitan:\n";
     $pesan .= "• *WAJIB SCAN QR CODE*\n";

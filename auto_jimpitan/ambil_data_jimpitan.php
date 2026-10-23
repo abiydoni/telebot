@@ -144,8 +144,8 @@ try {
     
     $pesan .= "━━━━━━━━━━━━━━━━━━━━\n";
     $pesan .= "ℹ️ *Info Aplikasi:*\n";
-    $pesan .= "🕸️ *Link download apk:*\n";
-    $pesan .= "https://drive.google.com/file/d/1Rrvp_VnajunNz6hnR_ffNRdcKrOoyUdX/view?usp=sharing\n\n";
+    $pesan .= "📲 *Link Download (Play Store):*\n";
+    $pesan .= "https://play.google.com/store/apps/details?id=jimpitan.appsbee.my.id\n\n";
     $pesan .= "👤 Silahkan login menggunakan akun gmail masing-masing\n";
     $pesan .= "\n━━━━━━━━━━━━━━━━━━━━\n";
     $pesan .= "🌟 *Terima kasih atas perhatiannya*\n";
