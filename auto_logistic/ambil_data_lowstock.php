@@ -24,14 +24,9 @@ try {
 } catch (Throwable $t) {
 }
 
-// Fungsi helper untuk escape markdown Telegram
+// Fungsi helper untuk escape pesan WA
 if (!function_exists('escapeMarkdown')) {
     function escapeMarkdown(string $text): string {
-        $chars = ['_', '*', '[', ']', '~', '`', '>', '#', '+', '=', '|', '{', '}', '!'];
-        foreach ($chars as $char) {
-            $text = str_replace($char, '\\' . $char, $text);
-        }
-        $text = preg_replace('/(?<!\d)-(?!\d)/', '\\-', $text);
         return $text;
     }
 }

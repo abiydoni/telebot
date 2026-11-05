@@ -31,17 +31,35 @@ try {
 } catch (Throwable $t) {
 }
 
-// Fungsi helper untuk escape markdown Telegram
+// Sinkronisasi items.expired_date agar konsisten dengan batch aktif & pengaturan gudang
+// (Mencegah exp palsu untuk barang di gudang non-exp atau stok yang sudah 0)
+try {
+    $pdo->query("
+        UPDATE items i
+        LEFT JOIN (
+            SELECT b.item_id, MIN(b.expired_date) as earliest_exp
+            FROM item_batches b
+            WHERE b.stock > 0 
+              AND b.expired_date IS NOT NULL 
+              AND b.expired_date != '' 
+              AND b.expired_date != '0000-00-00'
+              AND b.expired_date > '1970-01-01'
+            GROUP BY b.item_id
+        ) act ON act.item_id = i.id
+        LEFT JOIN warehouses w ON w.id = i.warehouse_id
+        SET i.expired_date = CASE 
+            WHEN w.requires_expiration = 0 THEN NULL
+            WHEN i.current_stock <= 0 THEN NULL
+            ELSE act.earliest_exp
+        END
+    ");
+} catch (Throwable $t) {
+}
+
+// Fungsi helper escape untuk pesan WA
 if (!function_exists('escapeMarkdown')) {
     function escapeMarkdown(string $text): string {
-        // Escape karakter khusus markdown yang tidak ingin di-format
-        // Jangan escape: titik (.), tanda kurung () karena digunakan untuk format normal
-        $chars = ['_', '*', '[', ']', '~', '`', '>', '#', '+', '=', '|', '{', '}', '!'];
-        foreach ($chars as $char) {
-            $text = str_replace($char, '\\' . $char, $text);
-        }
-        // Escape minus hanya jika bukan bagian dari angka negatif
-        $text = preg_replace('/(?<!\d)-(?!\d)/', '\\-', $text);
+        // Jangan tambahkan backslash karena di WhatsApp karakter \- atau \* akan tercetak apa adanya
         return $text;
     }
 }
@@ -49,44 +67,62 @@ if (!function_exists('escapeMarkdown')) {
 if (!function_exists('format_expired_line')) {
     function format_expired_line(int $no, array $it, bool $isPast): string
     {
-        $name   = $it['name'] ?? '-';
-        $code   = $it['code'] ?? '-';
-        $wh     = $it['warehouse_name'] ?? '-';
+        $name   = trim($it['name'] ?? '-');
+        $code   = trim($it['code'] ?? '-');
+        $wh     = trim($it['warehouse_name'] ?? '-');
         $stock  = (int) ($it['current_stock'] ?? 0);
-        $unit   = $it['unit'] ?? '';
-        $exp    = $it['expired_date'] ?? '';
-        $expFmt = $exp ? date('d/m/Y', strtotime($exp)) : '-';
-
-        $todayTs = strtotime(date('Y-m-d'));
-        $expTs   = $exp ? strtotime($exp) : $todayTs;
-
-        if ($isPast && $exp) {
-            $dayLabel = ' (' . (int) floor(($todayTs - $expTs) / 86400) . ' hari lalu)';
-        } else {
-            $dayLabel = ' (' . ($exp ? (int) floor(($expTs - $todayTs) / 86400) : 0) . ' hari lagi)';
+        $unit   = trim($it['unit'] ?? '');
+        $exp    = trim($it['expired_date'] ?? '');
+        
+        if (empty($exp) || $exp === '0000-00-00' || ($expTs = strtotime($exp)) === false) {
+            return '';
         }
 
-        $line  = "{$no}. *" . escapeMarkdown($name) . "*\n";
-        $line .= "   Stok: *" . escapeMarkdown((string)$stock) . "* " . escapeMarkdown($unit) . "\n";
-        $line .= "   Exp: *" . escapeMarkdown($expFmt) . "*" . escapeMarkdown($dayLabel) . "\n\n";
+        $expFmt  = date('d/m/Y', $expTs);
+        $todayTs = strtotime(date('Y-m-d'));
+
+        if ($isPast) {
+            $diffDays = (int) floor(($todayTs - $expTs) / 86400);
+            $dayLabel = ' (' . max(0, $diffDays) . ' hari lalu)';
+        } else {
+            $diffDays = (int) floor(($expTs - $todayTs) / 86400);
+            $dayLabel = ' (' . max(0, $diffDays) . ' hari lagi)';
+        }
+
+        $line  = "{$no}. *" . $name . "*\n";
+        $line .= "   Stok: *" . $stock . "* " . $unit . "\n";
+        $line .= "   Exp: *" . $expFmt . "*" . $dayLabel . "\n\n";
 
         return $line;
     }
 }
 
 try {
+    // Filter ketat agar TIDAK muncul exp palsu:
+    // 1. items.is_active = 1 (barang aktif)
+    // 2. items.current_stock > 0 (stok fisik barang masih ada)
+    // 3. warehouses.requires_expiration = 1 (hanya gudang yang memerlukan tanggal exp, misal F&B. Gudang non-exp diabaikan)
+    // 4. item_batches.stock > 0 (batch masih memiliki sisa stok)
+    // 5. item_batches.expired_date valid (bukan null, bukan kosong, bukan 0000-00-00, bukan 1970-01-01)
+    // 6. item_batches.expired_date <= :warning_end (masuk rentang peringatan)
     $sql = "
         SELECT items.id, items.code, items.name, items.unit, 
-               item_batches.stock AS current_stock,
+               SUM(item_batches.stock) AS current_stock,
                item_batches.expired_date, warehouses.name AS warehouse_name
         FROM item_batches
         INNER JOIN items ON items.id = item_batches.item_id
         LEFT JOIN warehouses ON warehouses.id = items.warehouse_id
         WHERE items.is_active = 1
+          AND items.current_stock > 0
+          AND (warehouses.requires_expiration = 1 OR warehouses.requires_expiration IS NULL)
           AND item_batches.stock > 0
           AND item_batches.expired_date IS NOT NULL
+          AND item_batches.expired_date != ''
+          AND item_batches.expired_date != '0000-00-00'
+          AND item_batches.expired_date > '1970-01-01'
           AND item_batches.expired_date <= :warning_end
-        ORDER BY item_batches.expired_date ASC
+        GROUP BY items.id, items.code, items.name, items.unit, item_batches.expired_date, warehouses.name
+        ORDER BY item_batches.expired_date ASC, items.name ASC
     ";
 
     $stmt = $pdo->prepare($sql);
@@ -97,7 +133,15 @@ try {
     $itemsWarning = [];
 
     foreach ($rows as $row) {
-        if ($row['expired_date'] < $today) {
+        $exp = trim($row['expired_date'] ?? '');
+        if (empty($exp) || $exp === '0000-00-00' || strtotime($exp) === false) {
+            continue;
+        }
+        if ((int) ($row['current_stock'] ?? 0) <= 0) {
+            continue;
+        }
+
+        if ($exp < $today) {
             $itemsExpired[] = $row;
         } else {
             $itemsWarning[] = $row;
@@ -119,7 +163,11 @@ try {
             $pesan .= "🔴 *SUDAH KEDALUWARSA* (" . escapeMarkdown((string)$expiredCount) . " barang)\n\n";
             $no = 1;
             foreach ($itemsExpired as $it) {
-                $pesan .= format_expired_line($no++, $it, true);
+                $line = format_expired_line($no, $it, true);
+                if ($line !== '') {
+                    $pesan .= $line;
+                    $no++;
+                }
             }
             $pesan .= "\n";
         }
@@ -128,7 +176,11 @@ try {
             $pesan .= "🟠 *HAMPIR KEDALUWARSA* (" . escapeMarkdown((string)$warningCount) . " barang)\n\n";
             $no = 1;
             foreach ($itemsWarning as $it) {
-                $pesan .= format_expired_line($no++, $it, false);
+                $line = format_expired_line($no, $it, false);
+                if ($line !== '') {
+                    $pesan .= $line;
+                    $no++;
+                }
             }
             $pesan .= "\n";
         }
